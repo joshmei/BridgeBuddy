@@ -399,4 +399,13 @@ These are things that will naturally come up during the build. The answer is no,
 
 ---
 
+## 13. Security requirements
+
+Non-negotiable gates tied to the phases that introduce the risk. These block the named phase from shipping.
+
+- **Supabase Row Level Security — before Phase 2 ships.** RLS must be **enabled on all tables** (`users`, `bridge_cache`, `user_logs`) with policies in place before Phase 2 (auth + personal log) ships. Supabase tables are publicly reachable via the anon key, so without RLS any client could read or write every user's logs. `user_logs` must be owner-scoped (a user reads/writes only their own rows); `bridge_cache` is shared read, writes restricted to the service role. Verify RLS is on for every table — a table with RLS disabled is open to the anon key regardless of intent.
+- **App Store privacy policy + nutrition labels — before Phase 5.** Phase 5 (native iOS Beta) introduces background location, which Apple treats as sensitive data. A published **privacy policy URL** and accurate **App Privacy "nutrition" labels** (declaring background location collection and its use) are required before the Beta is submitted to App Store Connect — Apple rejects submissions that collect location without them.
+
+---
+
 *Next step: Resolve open decisions 1 and 3 (name + color palette), then validate the Overpass + Wikipedia APIs manually before writing any code.*
