@@ -1,11 +1,11 @@
 # Bridge Buddy — Product Brief
-> Living document. Update this as decisions are made. Last updated: 2026-05-29.
+> Living document. Update this as decisions are made. Last updated: 2026-05-29 (session 2).
 > **Working name:** Bridge Buddy (placeholder — real name still TBD, see §10/§11).
-> **Latest change:** Phase 0 partially complete (0a, 0a′, 0b, 0c done). Three-source data pipeline decided (OSM → Wikidata → Wikipedia). Phase 0d blocked on user account info. See **Current status** below.
+> **Latest change:** Phase 0 — 0a/0a′/0b/0c/0d complete. App **live on Vercel** at https://bridge-buddy-zeta.vercel.app (root 200, JS+CSS assets 200, hashes match local build). Only **0e** (iPhone Safari visual check at 390px) remains to close Phase 0. See **Current status** below.
 
 ---
 
-## Current status — 2026-05-29
+## Current status — 2026-05-29 (end of session 2)
 
 **Active phase:** Phase 0 — Validate APIs + scaffold.
 
@@ -16,21 +16,30 @@
 | 0a — Validate Overpass + Wikipedia | ✅ | Throwaway script `phase-0/validate-apis.mjs`. Both APIs work. Surfaced that bridges are many OSM elements, not one (Brooklyn=31 ways, Hawthorne=69), and that `bridge:structure` is missing for some famous bridges (GWB). See §7 "Phase 0 findings." |
 | 0a′ — Test Wikidata as fallback | ✅ | `phase-0/test-wikidata.mjs` + `phase-0/inspect-all-tags.mjs`. Wikidata's `P31 instance of` recovers structure type for GWB (suspension) and exposes hybrid bridges for Brooklyn (suspension + cable-stayed). Resolved open decision #7 — Wikidata is now MVP-tier. |
 | 0b — Scaffold Vite + React + Tailwind | ✅ | `app/` subfolder. React 19.2 + TypeScript 6 + Tailwind v4 + Vite 8. iPhone viewport meta tags set in `app/index.html`. Default Vite demo assets removed. `npm run build` passes. |
-| 0c — Wire up Supabase client | ✅ | `@supabase/supabase-js` installed in `app/`. `app/src/lib/supabase.ts` reads `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` and throws clearly if missing. `app/.env.example` committed as template. The "smoke test" is implicit — first import with bad keys will fail loudly. |
+| 0c — Wire up Supabase client | ✅ | `@supabase/supabase-js` installed. `app/src/lib/supabase.ts` reads env vars. **Supabase project provisioned (ref `vtqdcxzyfxainyfshcoz`).** Credentials stored in `app/.env.local` (gitignored). Smoke-tested: `GET /auth/v1/health` returns 200 OK with valid anon key. |
 
-### Pending
+| 0d — Deploy empty shell to Vercel | ✅ | GitHub push done (`origin/main` = `f8dd776`, no secrets leaked). Vercel project imported with **Root Directory = `app`** (first deploy 404'd because that wasn't set; fixed + redeployed). Live at https://bridge-buddy-zeta.vercel.app — root + both assets return 200, asset hashes match local build. 2 Supabase env vars set in Vercel (not yet exercised — `App.tsx` is a static placeholder, no Supabase import). |
 
-| Sub-step | Status | Blocker |
+### Pending — Phase 0
+
+| Sub-step | Status | What remains |
 |---|---|---|
-| 0d — Deploy empty shell to Vercel | ⏳ | **Need user input** — does the user have GitHub / Supabase / Vercel accounts ready, or do those need creating? No git commits yet — first commit will go alongside this step. |
-| 0e — Verify shell loads on iPhone Safari | ⏳ | Gated on 0d. Phase 0 exit gate per §5.5. |
+| 0e — Verify shell loads on iPhone Safari | ⏳ pending | **Final Phase 0 gate (§5.5).** Open https://bridge-buddy-zeta.vercel.app in iPhone Safari. Confirm "Bridge Buddy / Coming soon" renders, no console errors, looks right at 390px. |
 
-### Resume here (for next session)
+### Resume here (next session) — exact steps
 
-1. **Ask the user about accounts** (GitHub repo, Supabase project + URL/anon key, Vercel). This is the only thing blocking forward motion.
-2. If accounts exist: create a GitHub repo, push the working tree, connect Vercel, set env vars, deploy. Then have the user open the URL on her iPhone for 0e.
-3. If accounts don't exist: walk through each in order (GitHub → Supabase → Vercel).
-4. After 0e exits, **Phase 1 begins** — bridge lookup screen (no auth) built on the three-source pipeline (OSM aggregated → Wikidata → Wikipedia → "unknown"). Phase 1 will need open decisions #2 (map library), #3 (color palette), #4 ("unknown structure" display), #5 (Overpass timeout fallback), #6 (Wikipedia disambiguation), #8 (OSM↔Wikidata conflict resolution), #9 (Wikidata→9-type mapping) resolved.
+Only **0e** remains in Phase 0: the user opens https://bridge-buddy-zeta.vercel.app in **iPhone Safari** and confirms "Bridge Buddy / Coming soon" renders cleanly at 390px with no console errors. Once she confirms, mark 0e ✅ and **Phase 0 is closed.**
+
+After Phase 0 closes, **Phase 1 begins** — bridge lookup (no auth), built on the OSM aggregated → Wikidata → Wikipedia pipeline. Resolve open decisions #2 (map library), #3 (color palette), #4 ("unknown structure" display), #5 (Overpass timeout), #6 (Wiki disambiguation), #8 (OSM↔Wikidata conflict), #9 (Wikidata→9-type mapping) before/during Phase 1. Note: auto-deploy on `git push` is now wired (Vercel ↔ GitHub), so Phase 1 work ships to the same URL on every push to `main`.
+
+### Project facts to carry forward
+
+- **GitHub repo:** https://github.com/joshmei/BridgeBuddy.git (pushed — `origin/main` = `f8dd776`)
+- **Live URL:** https://bridge-buddy-zeta.vercel.app (Vercel, Root Directory = `app`, auto-deploys on push to `main`)
+- **Supabase project ref:** `vtqdcxzyfxainyfshcoz` (URL: `https://vtqdcxzyfxainyfshcoz.supabase.co`)
+- **Anon key JWT payload:** `{iss: 'supabase', role: 'anon', exp: 2036}` — verified before storing
+- **Local commit SHA:** `f8dd776` (root-commit, main branch, 23 files, identity `joshmei <jgoog612@gmail.com>` via env vars — no git config was modified)
+- **`gh` install path:** via `winget install --id GitHub.cli` (already completed)
 
 ### Code layout
 
@@ -38,21 +47,22 @@
 Bridge/
 ├── PRODUCT (1).md       ← this file (the brief)
 ├── CLAUDE.md            ← instructions for future Claude sessions
-├── .gitignore           ← repo root
+├── .gitignore           ← repo root (.claude/ excluded so settings.local.json stays private)
 ├── phase-0/             ← throwaway API validation scripts (keep for reference)
 │   ├── validate-apis.mjs
 │   ├── inspect-all-tags.mjs
 │   └── test-wikidata.mjs
 └── app/                 ← the Vite app
     ├── src/
-    │   ├── App.tsx
-    │   ├── index.css   (Tailwind v4 import)
+    │   ├── App.tsx           (minimal "Coming soon" placeholder)
+    │   ├── index.css         (Tailwind v4 import only)
     │   ├── main.tsx
-    │   └── lib/supabase.ts
-    ├── .env.example
-    ├── index.html       (iPhone viewport meta tags set)
+    │   └── lib/supabase.ts   (env-driven client, throws if missing keys)
+    ├── .env.example          (committed — template)
+    ├── .env.local            (gitignored — has real Supabase creds)
+    ├── index.html            (iPhone viewport meta tags set)
     ├── package.json
-    └── vite.config.ts   (Tailwind + React plugins)
+    └── vite.config.ts        (Tailwind + React plugins)
 ```
 
 ### Decisions logged this session (2026-05-28 / 2026-05-29)
@@ -61,6 +71,9 @@ Bridge/
 - Beta location-tracking gets a one-tap homescreen toggle (§5, §5.5 Phase 5, §10)
 - **Three-source data pipeline confirmed:** OSM aggregated → Wikidata → Wikipedia → "unknown" (§7)
 - Vite scaffold lives in `app/` subfolder (chosen over root for cleaner doc/code separation)
+- TypeScript chosen over JS (not in §8 originally — picked for bridge-data optional-field safety)
+- Tailwind v4 (no PostCSS config, `@import "tailwindcss"` in `src/index.css`, `@tailwindcss/vite` plugin)
+- First commit author identity set via one-off env vars (`GIT_AUTHOR_*` / `GIT_COMMITTER_*`) — no git config modified. If `joshmei <jgoog612@gmail.com>` is wrong, amend the first commit before pushing.
 - Memory file written: `collaboration-pace.md` (user prefers moderation at scope/phase points, not micro-decisions)
 
 ---
