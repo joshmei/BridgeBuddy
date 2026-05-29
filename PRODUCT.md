@@ -45,7 +45,7 @@ After Phase 0 closes, **Phase 1 begins** — bridge lookup (no auth), built on t
 
 ```
 Bridge/
-├── PRODUCT (1).md       ← this file (the brief)
+├── PRODUCT.md           ← this file (the brief)
 ├── CLAUDE.md            ← instructions for future Claude sessions
 ├── .gitignore           ← repo root (.claude/ excluded so settings.local.json stays private)
 ├── phase-0/             ← throwaway API validation scripts (keep for reference)
