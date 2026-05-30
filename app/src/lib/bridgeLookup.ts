@@ -129,6 +129,8 @@ async function enrichWithMeta(result: BridgeSearchResult): Promise<EnrichedResul
     id: bridgeId(name, coordinate),
     name,
     region: result.region,
+    country: result.country,
+    state: result.state,
     coordinate,
     structures,
     yearBuilt: earlierYear(osm?.yearBuilt ?? null, useWikidata ? wikidata.yearBuilt : null),

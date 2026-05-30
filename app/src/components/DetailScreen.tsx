@@ -37,17 +37,42 @@ function MapPin({ lat, lng }: { lat: number; lng: number }) {
 
 // A labeled fact row, only rendered when the value is present (missing data is
 // simply omitted, not shown as blanks — §9).
-function Fact({ label, value }: { label: string; value: string | null }) {
+function Fact({
+  label,
+  value,
+  onClick,
+}: {
+  label: string
+  value: string | null
+  onClick?: () => void
+}) {
   if (!value) return null
   return (
     <div className="flex justify-between gap-4 border-b border-slate-100 py-2 last:border-0">
       <dt className="shrink-0 text-sm text-slate-500">{label}</dt>
-      <dd className="text-right text-sm font-medium text-slate-900">{value}</dd>
+      <dd className="text-right text-sm font-medium text-slate-900">
+        {onClick ? (
+          // Link, not button (§5.6 #5): tap → results filtered to this person.
+          <button type="button" onClick={onClick} className="text-blue-700 underline underline-offset-2">
+            {value}
+          </button>
+        ) : (
+          value
+        )}
+      </dd>
     </div>
   )
 }
 
-export function DetailScreen({ bridge, onBack }: { bridge: Bridge; onBack: () => void }) {
+export function DetailScreen({
+  bridge,
+  onBack,
+  onFilterByPerson,
+}: {
+  bridge: Bridge
+  onBack: () => void
+  onFilterByPerson?: (field: 'architect' | 'engineer', value: string) => void
+}) {
   const year = parseYear(bridge.yearBuilt)
   const contributors = [
     bridge.sources.osm && 'OpenStreetMap',
@@ -82,8 +107,24 @@ export function DetailScreen({ bridge, onBack }: { bridge: Bridge; onBack: () =>
         <dl className="rounded-xl border border-slate-200 bg-white px-4 py-1">
           <Fact label="Built" value={year ? String(year) : null} />
           <Fact label="Length" value={bridge.lengthMeters ? formatLength(bridge.lengthMeters) : null} />
-          <Fact label="Architect" value={bridge.architect} />
-          <Fact label="Structural engineer" value={bridge.engineer} />
+          <Fact
+            label="Architect"
+            value={bridge.architect}
+            onClick={
+              onFilterByPerson && bridge.architect
+                ? () => onFilterByPerson('architect', bridge.architect!)
+                : undefined
+            }
+          />
+          <Fact
+            label="Structural engineer"
+            value={bridge.engineer}
+            onClick={
+              onFilterByPerson && bridge.engineer
+                ? () => onFilterByPerson('engineer', bridge.engineer!)
+                : undefined
+            }
+          />
         </dl>
 
         {bridge.summary ? (

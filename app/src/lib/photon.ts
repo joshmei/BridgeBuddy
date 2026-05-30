@@ -26,6 +26,8 @@ export interface BridgeSearchResult {
   name: string
   coordinate: BridgeCoordinate
   region: string | null // "City, Region" — see regionLabel
+  country: string | null // structured, for the geographic filter
+  state: string | null // structured state/province (US/Canada drill-down)
   bbox: BboxLatLng | null // feature bounds — scopes the Overpass enrichment
 }
 
@@ -81,6 +83,8 @@ function toResult(f: PhotonFeature): BridgeSearchResult | null {
     name,
     coordinate: { lat: coords[1], lng: coords[0] },
     region: regionLabel(p),
+    country: p.country ?? null,
+    state: p.state ?? null,
     bbox,
   }
 }

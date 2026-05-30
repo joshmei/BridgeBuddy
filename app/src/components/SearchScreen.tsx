@@ -2,8 +2,10 @@ import { useRef, useState } from 'react'
 import type { Bridge } from '../lib/bridge'
 import { parseYear } from '../lib/overpass'
 import { searchAndEnrich } from '../lib/bridgeLookup'
+import { applyFilters, EMPTY_FILTERS, type Filters } from '../lib/filters'
 import { StructureBadge } from './StructureBadge'
 import { DetailScreen } from './DetailScreen'
+import { FilterControls } from './FilterControls'
 
 type Status = 'idle' | 'loading' | 'error' | 'done'
 
@@ -15,8 +17,6 @@ function formatCoord(bridge: Bridge): string | null {
 
 function BridgeCard({ bridge, onSelect }: { bridge: Bridge; onSelect: (b: Bridge) => void }) {
   const year = parseYear(bridge.yearBuilt)
-  // Secondary disambiguation line: prefer the Nominatim region label, fall back
-  // to coordinates.
   const secondary = bridge.region ?? formatCoord(bridge)
   return (
     <li>
@@ -26,11 +26,7 @@ function BridgeCard({ bridge, onSelect }: { bridge: Bridge; onSelect: (b: Bridge
         className="flex w-full gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left active:bg-slate-100"
       >
         {bridge.thumbnailUrl ? (
-          <img
-            src={bridge.thumbnailUrl}
-            alt=""
-            className="h-16 w-16 shrink-0 rounded-lg object-cover"
-          />
+          <img src={bridge.thumbnailUrl} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
         ) : null}
         <div className="min-w-0 flex-1 space-y-1.5">
           <h2 className="truncate text-base font-semibold text-slate-900">{bridge.name}</h2>
@@ -53,12 +49,24 @@ export function SearchScreen() {
   const [error, setError] = useState<string | null>(null)
   const [searched, setSearched] = useState('')
   const [selected, setSelected] = useState<Bridge | null>(null)
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
   const runId = useRef(0)
 
-  // The enriched bridge is already in hand from the search, so opening detail
-  // needs no refetch — just swap the view (search state is preserved on back).
+  // Tapping an architect/engineer on the detail page: return to the results list
+  // with only that person applied as the active filter (§5.6 #5).
+  function filterByPerson(field: 'architect' | 'engineer', value: string) {
+    setFilters({ ...EMPTY_FILTERS, [field]: value })
+    setSelected(null)
+  }
+
   if (selected) {
-    return <DetailScreen bridge={selected} onBack={() => setSelected(null)} />
+    return (
+      <DetailScreen
+        bridge={selected}
+        onBack={() => setSelected(null)}
+        onFilterByPerson={filterByPerson}
+      />
+    )
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -69,6 +77,7 @@ export function SearchScreen() {
     setStatus('loading')
     setError(null)
     setSearched(name)
+    setFilters(EMPTY_FILTERS) // a fresh search clears any active filters
     try {
       const bridges = await searchAndEnrich(name)
       if (id !== runId.current) return // a newer search superseded this one
@@ -80,6 +89,12 @@ export function SearchScreen() {
       setStatus('error')
     }
   }
+
+  const filtered = applyFilters(results, filters)
+  const personName = filters.architect ?? filters.engineer
+  // A person filter (from a detail-page link) with no others in the set → the
+  // dedicated empty state, rather than re-showing the one bridge they came from.
+  const personEmpty = personName != null && filtered.length <= 1
 
   return (
     <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 py-6">
@@ -112,8 +127,8 @@ export function SearchScreen() {
       <section className="mt-5">
         {status === 'idle' ? (
           <p className="text-sm text-slate-500">
-            Search by exact name. Named bridges only — anonymous overpasses and culverts are
-            excluded by design.
+            Search by name — partial names work (e.g. “golden”). Named bridges only; anonymous
+            overpasses and culverts are excluded by design.
           </p>
         ) : null}
 
@@ -125,23 +140,31 @@ export function SearchScreen() {
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             <p className="font-medium">Lookup failed</p>
             <p className="mt-1 text-red-700">{error}</p>
-            <p className="mt-1 text-red-700">Overpass can be slow under load — try again.</p>
+            <p className="mt-1 text-red-700">The search service can be slow under load — try again.</p>
           </div>
         ) : null}
 
         {status === 'done' && results.length === 0 ? (
           <p className="text-sm text-slate-500">
-            No named bridge found for “{searched}”. Search is exact for now — check spelling and
-            capitalization (e.g., “Brooklyn Bridge”).
+            No named bridge found for “{searched}”. Try a different spelling or a shorter name.
           </p>
         ) : null}
 
         {status === 'done' && results.length > 0 ? (
-          <ul className="space-y-2.5">
-            {results.map((bridge) => (
-              <BridgeCard key={bridge.id} bridge={bridge} onSelect={setSelected} />
-            ))}
-          </ul>
+          <div className="space-y-3">
+            <FilterControls bridges={results} filters={filters} onChange={setFilters} />
+            {personEmpty ? (
+              <p className="text-sm text-slate-500">No other bridges by {personName} found.</p>
+            ) : filtered.length === 0 ? (
+              <p className="text-sm text-slate-500">No bridges match these filters.</p>
+            ) : (
+              <ul className="space-y-2.5">
+                {filtered.map((bridge) => (
+                  <BridgeCard key={bridge.id} bridge={bridge} onSelect={setSelected} />
+                ))}
+              </ul>
+            )}
+          </div>
         ) : null}
       </section>
     </main>

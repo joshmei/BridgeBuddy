@@ -25,7 +25,9 @@ export interface BridgeCoordinate {
 export interface Bridge {
   id: string // synthetic stable key — see identity.ts; also the §9 cache key
   name: string
-  region: string | null // human-readable place label from Nominatim, e.g. "Brooklyn, New York"
+  region: string | null // human-readable place label, e.g. "Brooklyn, New York"
+  country: string | null // structured, for the geographic filter (e.g. "United States")
+  state: string | null // structured state/province, for US/Canada drill-down
   coordinate: BridgeCoordinate | null
   structures: StructureFinding[] // empty => "Structure type unknown" (§6)
   yearBuilt: string | null // ISO-ish date or year string, as the source gives it

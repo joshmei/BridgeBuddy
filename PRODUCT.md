@@ -1,7 +1,7 @@
 # Bridge Buddy — Product Brief
 > Living document. Update this as decisions are made. Last updated: 2026-05-29 (session 2).
 > **Working name:** Bridge Buddy (placeholder — real name still TBD, see §10/§11).
-> **Latest change:** **Phase 1 (bridge lookup) functionally complete (2026-05-29) — pending iPhone Safari visual check + deploy.** Search (Nominatim, case-insensitive, deduped, region labels) → results list with structure badge → detail page (badge, facts, Wikipedia summary/photo, OSM-embed map pin). Pipeline `Nominatim → Overpass(bbox) → Wikidata → Wikipedia` verified live. Not yet committed/pushed (batched). See **Current status**.
+> **Latest change:** **Phase 1 complete + deployed; Phase 1.5 (search-results filtering) added to scope (2026-05-29).** Search now runs on **Photon** (prefix/typeahead, bridge-only, prominence-ranked) → results list with structure badge → detail page (badge, facts, Wikipedia summary/photo, OSM-embed map pin). Pipeline `Photon → Overpass(bbox) → Wikidata → Wikipedia` with collision-validation + canonical naming, verified live. **Phase 1.5 spec in §5.6** — filter UI pattern pending user approval before build. See **Current status**.
 
 ---
 
@@ -121,6 +121,7 @@ The simplest version that is still genuinely useful and delightful. No location 
 
 **Features:**
 - Search bridges by name or location (named bridges only — see scope rules)
+- **Filter search results** by geography, structure type, architect, and structural engineer (see §5.6)
 - Bridge detail page: structure type, year built, architect, builder, Wikipedia summary, photo, map pin
 - Structure type displayed as a visual badge on every bridge card and detail page
 - Manual log: mark a bridge as "crossed" or "seen", add optional date and note
@@ -162,10 +163,16 @@ The version roadmap in §5 describes *what* each release contains. This section 
 - **Why this phase:** Proves the core "what is this bridge?" loop on her actual device. Every later feature sits on top of this view, so getting it right (especially the structure-type badge — the #1 feature) de-risks everything downstream.
 - **Done when:** She can search "Brooklyn Bridge" on her phone and the detail page looks right at 390px. Empty states are handled (no `bridge:structure` shows "Structure type unknown" per §6).
 
+### Phase 1.5 — Search-results filtering
+- **Deliverable:** A filter system on the **search results** screen (not the log — that's Phase 2). Narrow results by geography (country → state/province for US/Canada), structure type (multi-select), architect, and structural engineer. Architect/engineer fields on the detail page become tappable links that jump back to filtered results. Full spec in **§5.6**.
+- **Why this phase:** Search can return many same-named or thematically-related bridges; filtering lets her cut to what she wants before tapping in, and the architect/engineer links turn the data we already fetch into a browsing tool (e.g. "show me every Roebling bridge"). Sits naturally on the Phase 1 results list; no auth or DB needed yet.
+- **Done when:** From a multi-result search she can stack a country + structure-type filter and see results narrow (AND logic); architect/engineer filters appear only when that data exists in the result set; tapping an architect on a detail page returns to results filtered to that architect (with a clear empty state if there are no others).
+- **Carries forward:** The same filter UI + logic is reused on the Phase 2 **My Bridges** log screen.
+
 ### Phase 2 — Auth + personal log
-- **Deliverable:** Supabase email/password auth. "Crossed" and "Seen" buttons on the detail page. My Bridges list, filterable by structure type. Bridge data cached in Supabase on first lookup per §9.
+- **Deliverable:** Supabase email/password auth. "Crossed" and "Seen" buttons on the detail page. My Bridges list, filterable by structure type **(reusing the Phase 1.5 filter system — geography/type/architect/engineer)**. Bridge data cached in Supabase on first lookup per §9.
 - **Why this phase:** Unlocks the "personal record" half of the product. Also installs the cache layer that protects Overpass/Wikipedia from being hit on every view.
-- **Done when:** She logs a bridge, signs out, signs back in on another device, and sees it. The structure-type filter on My Bridges works.
+- **Done when:** She logs a bridge, signs out, signs back in on another device, and sees it. The Phase 1.5 filters work on My Bridges.
 
 ### Phase 3 — Map + stats
 - **Deliverable:** Leaflet map showing all logged bridges as pins, colored by the 9 structure-type palette. Stats screen with total crossed + breakdown by type.
@@ -191,6 +198,42 @@ The version roadmap in §5 describes *what* each release contains. This section 
 - **Deliverable:** Shareable public profiles, comments on individual bridges, follow friends, leaderboards. Optional contributions back to OSM.
 - **Why this phase:** Specifically requested in §5 — shared profiles and commenting with other bridge engineers.
 - **Done when:** Two engineers she knows can see each other's profiles and comment on a bridge.
+
+---
+
+## 5.6 Search-results filtering (Phase 1.5)
+
+A filter system layered on the **search results** screen, so the user can narrow what a search returns *before* tapping into a detail page. Added 2026-05-29 (scope addition, "Phase 1.5"). **Applies to search results only**; the same UI + logic is reused on the Phase 2 **My Bridges** log.
+
+**Cross-cutting rules**
+- **AND logic.** Every active filter narrows the set; filters never expand it. Multiple filters stack (e.g. country = United States **AND** structure type = Suspension).
+- **Data-driven, no new APIs.** Every filter derives from data already on each enriched result — region label (geography), structure findings (type), `architect`, `engineer`. No extra network calls.
+- **Hide empty filters.** Architect and engineer filters are shown **only** when at least one result in the current set has that field; otherwise hidden. Geography/type always available.
+- **Mobile-first (390px, iPhone Safari).** Filter controls are a bottom sheet and/or a horizontal chip row — never a sidebar. (Exact pattern: pending user approval before build.)
+
+**1. Geographic filter**
+- First level: **Country** (e.g. United States, France, Australia). The list shows countries present in the current results.
+- Second level: if **United States or Canada** is selected, show a **State/Province** picker beneath it. Other countries stop at country level.
+- Source: structured `country` + `state` fields carried on each result (from Photon's address breakdown). No new API for the filter itself.
+- **Country pinning (which country sits at the top of the list):**
+  - If the browser has granted geolocation, reverse-geocode the user's GPS position to a country (Nominatim reverse: `…/reverse?format=json&lat=&lon=`, read `address.country`) and pin that country at the top.
+  - On GPS unavailable / denied / timeout → **silently** pin **United States** (no error shown).
+  - When US is the *default* pin (GPS fallback), **Canada** is pinned second; the rest follow alphabetically. When GPS determines the top country, Canada gets **no** special treatment (alphabetical) — unless the user is in Canada, in which case Canada is the GPS pin.
+  - **Never request GPS on page load.** Request only when the user opens the filter sheet and taps the **Country** filter, so the permission prompt appears in context. Result is cached for the session.
+
+**2. Structure-type filter**
+- Multi-select over the 9 canonical types (§6). Formalizes the existing badge into an explicit filter.
+
+**3. Architect filter**
+- Lists only architects **present in the current result set** (not a global list). Selecting one narrows to bridges by that architect. Source: `architect` (Wikidata/OSM).
+
+**4. Structural-engineer filter**
+- Same as architect, for `engineer`. Lists only engineers present in the current results.
+
+**5. Clickable architect / engineer on the detail page**
+- The Architect and Structural Engineer rows in the detail facts table become **tappable links** (subtle underline / colored text — link, not button).
+- Tapping navigates back to search results with that person pre-applied as the active architect/engineer filter.
+- If there are no other bridges by that person, show a clear empty state: **"No other bridges by [name] found."**
 
 ---
 
@@ -383,6 +426,7 @@ user_logs
 | 7 | ~~Wikidata as tertiary source~~ | **RESOLVED 2026-05-29.** Wikidata is in for MVP, used as the *secondary* source between OSM and Wikipedia (not deferred to V2). Phase 0 test confirmed it recovers structure type, architect, engineer, and length for bridges OSM doesn't tag. Hybrid bridge types come along for free. | — |
 | 8 | ~~Resolution when OSM and Wikidata disagree on structure type~~ | **RESOLVED 2026-05-29 — show both.** Both findings render as separate badges (e.g. Hawthorne = `Truss` + `Movable`); it's technically accurate (a truss bridge with a vertical lift) and data stays lossless. Provenance kept in the model. | — |
 | 9 | Mapping Wikidata bridge subclasses to the 9 canonical types | **DRAFT implemented 2026-05-29** (`WIKIDATA_KEYWORD_RULES` in `structureTypes.ts` — keyword rules: vertical-lift/swing/bascule → movable, etc.). Needs a PE review pass for completeness/correctness before ship. | Review before Phase 4 ship |
+| 10 | Phase 1.5 filter UI pattern | Bottom sheet vs horizontal chip row vs dropdown (mobile-first, no sidebar). User must approve before build (§5.6). | **Before Phase 1.5 build** |
 
 ---
 

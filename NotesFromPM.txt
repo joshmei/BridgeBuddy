@@ -1,47 +1,104 @@
-Three issues from latest testing:
+New feature spec: Filtering system
+Please add this to PRODUCT.md as a new section under MVP features,
+then implement it as Phase 1.5 — after Phase 1 (search + detail 
+page) and before Phase 2 (auth + personal log).
 
-1. "golden gate" (partial) returns "Golden Gate" not 
-"Golden Gate Bridge" — the result name is truncated. 
-It's the right bridge but the name should display in 
-full as "Golden Gate Bridge."
+Update the phase list in PRODUCT.md to insert Phase 1.5 between 
+Phase 1 and Phase 2.
 
-2. Searching "golden gate bridge" returns two results — 
-San Francisco (correct) and Queensland (wrong). There is 
-no Golden Gate Bridge in Queensland — it is pulling the 
-San Francisco bridge data but attaching a Queensland 
-location from a different OSM entry. The Queensland result 
-should be removed. It's showing the SF photo, SF architect, 
-SF length, SF year — but wrong location. This is a data 
-collision, not a real second bridge.
+WHAT PHASE 1.5 FILTERS APPLY TO:
+Filters apply to SEARCH RESULTS — not the personal log (that 
+comes in Phase 2). When she searches for bridges, she can narrow 
+the results by geography, architect, or structural engineer before 
+even tapping into a detail page.
 
-3. The Queensland result's detail page shows "Queensland" 
-with no city — location display should always be 
-"City, Region" format. If city is missing show at minimum 
-the country.
+FILTER SYSTEM SPEC:
 
-ISSUE 4 — Search results are not ranked by relevance or prominence.
+1. Geographic filter
+A filter option on the search results screen that lets the user 
+narrow results by location. The hierarchy is:
+- First level: Country (e.g. United States, France, Australia)
+- Second level: If United States or Canada is selected, show a 
+  State/Province picker underneath. For all other countries, 
+  country level is enough.
+- These filters stack with the structure type filter — she should 
+  be able to filter by both country AND structure type simultaneously.
+- Source for country and state: derive from the region label 
+  already returned on each search result. No new API needed.
 
-Searching "golden" returns "Golden Bridge, Vietnam" but not 
-"Golden Gate Bridge, San Francisco." This is a search ranking 
-problem — Nominatim returns results in its own order which does 
-not account for how famous or significant a bridge is.
+2. Filter by structure type
+Already partially implemented via badges — formalize this as an 
+explicit filter option on the search results screen. Select one 
+or more structure types to narrow results.
 
-Two things need to happen:
+3. Filter by architect
+A filter option on the search results screen showing architects 
+present in the current result set. Tapping one narrows the 
+results to bridges by that architect.
+- Only show architects present in the current search results —
+  not a global list.
+- Source: architect field already fetched from Wikidata/OSM.
 
-First, the search should return more results from Nominatim than 
-we currently show — we may be capping results too low and the 
-Golden Gate Bridge is simply not in the first few Nominatim 
-results for "golden." Increase the Nominatim result limit to 
-at least 20 before we apply our own filtering and deduplication.
+4. Filter by structural engineer
+Same as architect filter but for structural engineer. Only show 
+engineers present in the current result set.
+- Source: structural engineer field already fetched from 
+  Wikidata/OSM.
 
-Second, after fetching results, sort them by importance before 
-displaying. Nominatim returns an "importance" score (a float 
-between 0 and 1) on every result — the Golden Gate Bridge will 
-have a much higher importance score than the Golden Bridge in 
-Vietnam. Sort all results by this importance score descending 
-before rendering the list. This means famous bridges always 
-float to the top regardless of what order Nominatim returns them.
+5. Clickable architect and engineer names on the detail page
+On the bridge detail page, the Architect and Structural Engineer 
+fields in the facts table should be tappable. Tapping a name 
+navigates back to search results with that architect or engineer 
+already applied as the active filter.
+- Should feel like a link, not a button — subtle underline or 
+  colored text.
+- If no other results exist for that person, show a clear empty 
+  state: "No other bridges by [name] found."
 
-This single change will fix the most common frustration a user 
-will have with search — typing a partial name and not seeing 
-the bridge they were obviously looking for at the top.
+ALSO — in Phase 2 and beyond, these same filters should carry 
+over to the My Bridges personal log screen as well, so she can 
+filter her saved collection the same way.
+
+IMPLEMENTATION NOTES FOR CLAUDE CODE:
+- Filter UI should be a bottom sheet or horizontal chip row — 
+  mobile-first, 390px, iPhone Safari appropriate. Not a sidebar.
+- All filters use AND logic — multiple filters narrow results, 
+  never expand them.
+- Architect and engineer filters are only shown when that data 
+  is available in the result set — hide them if no results have 
+  that field populated.
+- Flag to user before building which UI pattern you plan to use 
+  for the filter controls (bottom sheet vs chips vs dropdown) 
+  and wait for approval.
+- Update PRODUCT.md with this full spec, insert Phase 1.5 into 
+  the phase list, and mark all filter behavior as carrying 
+  forward into Phase 2+ for the personal log.
+
+Update the country filter pinning logic:
+
+If the user has granted location permission in their browser 
+(navigator.geolocation is available and permitted), use their 
+current GPS coordinates to reverse-geocode their country and 
+pin that country at the top of the filter list.
+
+If GPS is unavailable, denied, or times out — fall back to 
+pinning United States at the top by default. Silent fallback, 
+no error message shown to the user.
+
+Canada always appears second when US is pinned by default. 
+When GPS determines the top country, Canada does not get 
+special treatment — it falls alphabetically with everything 
+else unless the user is in Canada, in which case Canada is 
+pinned first.
+
+For reverse geocoding the GPS coordinates to a country name, 
+use the Nominatim reverse geocoding endpoint — it's already 
+in our ecosystem, free, no new API needed:
+https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}
+The country field is in the response as address.country.
+
+Important: this is MVP web app — do not request GPS 
+permission automatically on page load. Only request it when 
+the user opens the filter panel and taps the Country filter. 
+That way the browser permission prompt appears in context, 
+not randomly when she first opens the app.
