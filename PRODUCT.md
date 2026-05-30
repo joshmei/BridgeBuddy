@@ -1,13 +1,13 @@
 # Bridge Buddy — Product Brief
-> Living document. Update this as decisions are made. Last updated: 2026-05-29 (session 2).
+> Living document. Update this as decisions are made. Last updated: 2026-05-30 (session 3).
 > **Working name:** Bridge Buddy (placeholder — real name still TBD, see §10/§11).
-> **Latest change:** **Phase 1 complete + deployed; Phase 1.5 (search-results filtering) added to scope (2026-05-29).** Search now runs on **Photon** (prefix/typeahead, bridge-only, prominence-ranked) → results list with structure badge → detail page (badge, facts, Wikipedia summary/photo, OSM-embed map pin). Pipeline `Photon → Overpass(bbox) → Wikidata → Wikipedia` with collision-validation + canonical naming, verified live. **Phase 1.5 spec in §5.6** — filter UI pattern pending user approval before build. See **Current status**.
+> **Latest change (2026-05-30, session 3):** **Phase 2 scope RE-REVISED — Supabase is back in.** The single-user localStorage POC (planned earlier 2026-05-30) is superseded: the log must survive a new phone / cleared browser / device switch, so it goes to Supabase. Built this session: **Google Sign-In** (Supabase OAuth — chosen over Apple, which needs a paid dev account; over email/password for frictionless first use), `bridge_cache` + `user_logs` tables with **RLS**, the **"I've Crossed This"** button (with `first_recorded_crossing` / `last_crossing` / `crossing_count`), **My Bridges**, and a basic **Stats** screen. Migration SQL in `supabase/migrations/`. See §5.5 Phase 2, §9, §13.
 
 ---
 
-## Current status — 2026-05-29 (end of session 2)
+## Current status — 2026-05-30 (session 3)
 
-**Active phase:** Phase 1 — Bridge lookup (no auth). **Phase 0 is closed** (all sub-steps ✅).
+**Active phase:** Phase 2 — Auth + personal log (Supabase). **Phases 0, 1, and 1.5 are closed** (all live + deployed). Phase 2 code is written (auth, schema, logging, My Bridges, Stats); **gated on the user completing one-time Supabase/Google setup** (paste the two SQL migrations; configure the Google OAuth provider) before it's exercised end-to-end.
 
 ### Done
 
@@ -169,10 +169,17 @@ The version roadmap in §5 describes *what* each release contains. This section 
 - **Done when:** From a multi-result search she can stack a country + structure-type filter and see results narrow (AND logic); architect/engineer filters appear only when that data exists in the result set; tapping an architect on a detail page returns to results filtered to that architect (with a clear empty state if there are no others).
 - **Carries forward:** The same filter UI + logic is reused on the Phase 2 **My Bridges** log screen.
 
-### Phase 2 — Auth + personal log
-- **Deliverable:** Supabase email/password auth. "Crossed" and "Seen" buttons on the detail page. My Bridges list, filterable by structure type **(reusing the Phase 1.5 filter system — geography/type/architect/engineer)**. Bridge data cached in Supabase on first lookup per §9.
-- **Why this phase:** Unlocks the "personal record" half of the product. Also installs the cache layer that protects Overpass/Wikipedia from being hit on every view.
-- **Done when:** She logs a bridge, signs out, signs back in on another device, and sees it. The Phase 1.5 filters work on My Bridges.
+### Phase 2 — Auth + personal log (Supabase) — SCOPE RE-REVISED 2026-05-30 (session 3)
+The earlier localStorage-only POC was reversed mid-session: a per-device log loses her whole collection if she gets a new phone, clears Safari, or switches devices — unacceptable for a gift meant to last. The log goes to a real backend now. **Auth + Supabase + `bridge_cache` + `user_logs` + RLS are all in this phase.**
+- **Auth — Google Sign-In only (Supabase OAuth).** Chosen over Apple Sign-In (requires a paid Apple Developer account + app registration we don't have yet) and over email/password (Google is a frictionless one-tap first experience). One "Continue with Google" button; session persists until explicit sign-out. Search + bridge detail stay fully browsable **without** an account; only logging a crossing requires sign-in.
+- **Deliverable:**
+  - **"I've Crossed This"** button on the detail page. First tap → log with `first_recorded_crossing = last_crossing = today`, `crossing_count = 1`. Re-tap → bump `last_crossing` to today, increment `crossing_count`. ("First recorded" is honest — it's the first time she logged it *in this app*, not a claim about her true first-ever crossing.)
+  - **My Bridges** screen: her logged bridges (`user_logs ⋈ bridge_cache`) — name, structure badge, first/last dates, crossing count, notes. Sign-out lives here.
+  - **Stats** screen: total crossed, breakdown by structure type (hybrids count in each of their types — accuracy over a clean partition), first recorded crossing (milestone), most-crossed bridge.
+- **Storage:** Supabase. Logging a crossing upserts the bridge into `bridge_cache` (incl. the full enriched `Bridge` as `data jsonb`, so My Bridges/detail rehydrate with no API calls), then writes `user_logs`. See §9.
+- **Navigation:** bottom tab bar (Search · My Bridges · Stats) — no router; state-driven, matching the existing detail-overlay pattern.
+- **Done when:** She signs in with Google, taps "I've Crossed This" on a bridge, sees it in My Bridges with the right dates/count, and Stats reflects it — and it all survives a fresh device/login.
+- **Deliberately NOT in this phase (deferred):** "Seen" status; a **notes-entry UI** (the `notes` column exists and is displayed, but input lands in Phase 4 polish); editing/deleting logs; a social layer (comments, likes, a feed among her + coworkers).
 
 ### Phase 3 — Map + stats
 - **Deliverable:** Leaflet map showing all logged bridges as pins, colored by the 9 structure-type palette. Stats screen with total crossed + breakdown by type.
@@ -378,41 +385,44 @@ Building the live lookup pipeline (`app/src/lib/`, smoke-tested via `phase-1/smo
 
 ## 9. Database schema (MVP)
 
+**AS BUILT — 2026-05-30 (session 3).** Migration SQL: `supabase/migrations/0001_schema.sql` (tables) + `0002_rls.sql` (RLS, §13). No `public.users` table — signup is Google-only with no profile fields to store, so `user_logs.user_id` references `auth.users(id)` directly.
+
 ```
-users
-  id          uuid PK (managed by Supabase Auth)
-  email       text
-  created_at  timestamp
+bridge_cache                          -- shared public bridge data (cached on first log)
+  id                   uuid PK (gen_random_uuid)
+  bridge_key           text UNIQUE    -- synthetic stable key slug@lat,lng (identity.ts).
+                                      --   NOT an OSM id: one bridge is dozens of OSM
+                                      --   elements. (Renamed from §9's earlier `osm_id`.)
+  name                 text
+  lat                  float
+  lng                  float
+  structure            text           -- denormalized PRIMARY canonical type (Stats grouping)
+  structures           jsonb          -- full StructureFinding[] — preserves hybrids for the badge
+  year_built           int nullable
+  architect            text nullable
+  structural_engineer  text nullable
+  wikipedia_summary    text nullable
+  wikipedia_image      text nullable
+  wikipedia_url        text nullable
+  wikidata_qid         text nullable
+  data                 jsonb          -- full enriched Bridge — rehydrate My Bridges/detail, no API calls
+  cached_at            timestamptz
 
-bridge_cache
-  id          uuid PK
-  osm_id      text UNIQUE        -- OpenStreetMap way/relation ID
-  name        text
-  lat         float
-  lng         float
-  structure   text               -- suspension, arch, beam, etc.
-  year_built  int nullable
-  architect   text nullable
-  wikipedia_summary  text nullable
-  wikipedia_image    text nullable
-  wikipedia_url      text nullable
-  cached_at   timestamp          -- so we can refresh stale data
-
-user_logs
-  id          uuid PK
-  user_id     uuid FK → users.id
-  bridge_id   uuid FK → bridge_cache.id
-  status      text               -- 'crossed' or 'seen'
-  logged_at   timestamp
-  visit_date  date nullable      -- the actual date she crossed it (may differ from logged_at)
-  notes       text nullable
-  created_at  timestamp
-
+user_logs                             -- private, owner-scoped crossing record
+  id                       uuid PK (gen_random_uuid)
+  user_id                  uuid FK → auth.users.id (on delete cascade)
+  bridge_id                uuid FK → bridge_cache.id (on delete cascade)
+  first_recorded_crossing  date       -- first time logged IN THIS APP (honest; not her true first-ever)
+  last_crossing            date       -- bumped to today on each re-tap
+  crossing_count           integer    -- default 1; +1 on each re-tap
+  notes                    text nullable  -- display-only this phase; entry UI in Phase 4
+  created_at               timestamptz
+  UNIQUE (user_id, bridge_id)         -- one row per user+bridge; enables the re-tap increment
 ```
 
 (Home-screen filter options are NOT a DB table — see the bundled static config note below.)
 
-**Caching rationale:** Rather than hitting Overpass + Wikipedia on every view, cache bridge data in Supabase after the first lookup. Refresh if `cached_at` is older than 30 days.
+**Caching rationale:** Rather than hitting Overpass + Wikipedia on every view, cache bridge data in Supabase. **As built, the cache is populated only when she logs a crossing** (not on every view), and rows are never updated client-side (RLS grants insert only — no update/delete), so the 30-day staleness refresh from §9's original plan is deferred to a future service-role job. Adequate for now; logged bridges render instantly from `data jsonb`.
 
 **Home-screen filter options — bundled static config (REVISED 2026-05-30):** The earlier `filter_metadata` Supabase table is **dropped** (no table, no RLS, no write-through, no user setup). Filter option values ship as a static JSON, `app/src/data/filterMetadata.json`, generated by `phase-1/gen-seed.mjs` (50 US states + 13 Canadian provinces hardcoded; ~40 architects + ~40 engineers pulled from Wikidata; US + Canada countries). Instant, zero network, regenerate anytime by re-running the script. Trade-off vs the table: no automatic self-growth from user views — refresh by re-running the generator.
 
@@ -472,7 +482,10 @@ These are things that will naturally come up during the build. The answer is no,
 
 Non-negotiable gates tied to the phases that introduce the risk. These block the named phase from shipping.
 
-- **Supabase Row Level Security — before Phase 2 ships.** RLS must be **enabled on all tables** (`users`, `bridge_cache`, `user_logs`) with policies in place before Phase 2 (auth + personal log) ships. Supabase tables are publicly reachable via the anon key, so without RLS any client could read or write every user's logs. `user_logs` must be owner-scoped (a user reads/writes only their own rows); `bridge_cache` is shared read, writes restricted to the service role. Verify RLS is on for every table — a table with RLS disabled is open to the anon key regardless of intent. (Note: home-screen filter options are a bundled static config, not a DB table — §5.6 #6 — so they introduce no RLS surface; Supabase still arrives in Phase 2.)
+- **Supabase Row Level Security — before Phase 2 ships. AS BUILT 2026-05-30 (`supabase/migrations/0002_rls.sql`).** RLS is **enabled on both tables** (`bridge_cache`, `user_logs`); there is no `public.users` table (auth.users is managed by Supabase and not anon-exposed). Supabase tables are publicly reachable via the anon key, so without RLS any client could read or write every user's logs.
+  - `user_logs` — owner-scoped: `select` / `insert` / `update` policies all require `user_id = auth.uid()`; no `delete` policy (deletes denied). No user can see or touch another user's logs.
+  - `bridge_cache` — shared `select` for everyone (anon + authenticated); `insert` for **authenticated** users (the client populates the cache when she logs — **the service role key is never used client-side**); no `update`/`delete` policy. *(This overrides the earlier "writes restricted to the service role" note: the client must self-populate the cache and we deliberately keep the service role server-only. Trade-off: any signed-in user could insert cache rows, but none can modify or delete existing ones. Acceptable for a 1–2 person app.)*
+  - Verify RLS is on for every table — a table with RLS disabled is open to the anon key regardless of intent. (Home-screen filter options are a bundled static config, not a DB table — §5.6 #6 — so no RLS surface.)
 - **App Store privacy policy + nutrition labels — before Phase 5.** Phase 5 (native iOS Beta) introduces background location, which Apple treats as sensitive data. A published **privacy policy URL** and accurate **App Privacy "nutrition" labels** (declaring background location collection and its use) are required before the Beta is submitted to App Store Connect — Apple rejects submissions that collect location without them.
 
 ---

@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react'
 import type { Bridge } from '../lib/bridge'
 import { parseYear } from '../lib/overpass'
+import { useAuth } from '../lib/auth'
+import { getLogForBridge, recordCrossing, formatLogDate, type CrossingLog } from '../lib/logs'
 import { StructureBadge } from './StructureBadge'
 
 function formatLength(meters: number): string {
@@ -31,6 +34,84 @@ function MapPin({ lat, lng }: { lat: number; lng: number }) {
       >
         {lat.toFixed(4)}°, {lng.toFixed(4)}° · View larger map →
       </a>
+    </section>
+  )
+}
+
+// "I've Crossed This" — the primary action of the app (PART 4). Browsing is
+// open to everyone; logging requires an account, so a tap while logged out opens
+// the auth screen. Logged in: first tap creates the log (count 1, first = last =
+// today); each later tap bumps last_crossing and increments the count.
+function CrossedButton({ bridge }: { bridge: Bridge }) {
+  const { user, openAuthPrompt } = useAuth()
+  const [log, setLog] = useState<CrossingLog | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    if (!user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLog(null)
+      return
+    }
+    getLogForBridge(user.id, bridge)
+      .then((l) => {
+        if (active) setLog(l)
+      })
+      .catch(() => {
+        /* non-fatal: button just shows the un-logged state */
+      })
+    return () => {
+      active = false
+    }
+    // bridge.id is the stable synthetic identity; depending on the object would
+    // refetch on every unrelated re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, bridge.id])
+
+  async function onTap() {
+    if (!user) {
+      openAuthPrompt()
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      setLog(await recordCrossing(user.id, bridge))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save. Try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const crossed = log != null
+  return (
+    <section className="space-y-1.5">
+      <button
+        type="button"
+        onClick={onTap}
+        disabled={busy}
+        className={`w-full rounded-xl px-4 py-3 text-base font-semibold disabled:opacity-60 ${
+          crossed
+            ? 'border border-emerald-300 bg-emerald-50 text-emerald-800'
+            : 'bg-slate-900 text-white active:bg-slate-700'
+        }`}
+      >
+        {busy ? 'Saving…' : crossed ? 'Crossed ✓' : "I've Crossed This"}
+      </button>
+      {crossed && log ? (
+        <div className="text-xs text-slate-500">
+          <p>First recorded: {formatLogDate(log.firstRecordedCrossing)}</p>
+          {log.crossingCount > 1 ? (
+            <p>
+              Crossed {log.crossingCount} times · Last: {formatLogDate(log.lastCrossing)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {error ? <p className="text-xs text-red-700">{error}</p> : null}
     </section>
   )
 }
@@ -68,10 +149,12 @@ export function DetailScreen({
   bridge,
   onBack,
   onFilterByPerson,
+  backLabel = 'Search',
 }: {
   bridge: Bridge
   onBack: () => void
   onFilterByPerson?: (field: 'architect' | 'engineer', value: string) => void
+  backLabel?: string
 }) {
   const year = parseYear(bridge.yearBuilt)
   const contributors = [
@@ -81,14 +164,14 @@ export function DetailScreen({
   ].filter(Boolean) as string[]
 
   return (
-    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 pb-10">
+    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 pb-28">
       <div className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 px-4 py-3 backdrop-blur">
         <button
           type="button"
           onClick={onBack}
           className="text-sm font-medium text-slate-600 hover:text-slate-900"
         >
-          ‹ Search
+          ‹ {backLabel}
         </button>
       </div>
 
@@ -103,6 +186,9 @@ export function DetailScreen({
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{bridge.name}</h1>
           {bridge.region ? <p className="text-sm text-slate-500">{bridge.region}</p> : null}
         </header>
+
+        {/* Primary action — prominent, directly under the title (PART 4). */}
+        <CrossedButton bridge={bridge} />
 
         <dl className="rounded-xl border border-slate-200 bg-white px-4 py-1">
           <Fact label="Built" value={year ? String(year) : null} />

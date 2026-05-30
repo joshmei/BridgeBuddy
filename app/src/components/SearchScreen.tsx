@@ -150,7 +150,7 @@ export function SearchScreen() {
   }
 
   return (
-    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 py-6">
+    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-6 pb-28">
       <header className="mb-4">
         <p className="text-xs uppercase tracking-widest text-slate-500">Bridge Buddy</p>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Find a bridge</h1>
