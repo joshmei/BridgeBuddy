@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository status
 
-This repository is in **Phase 0** (validate APIs + scaffold; see the brief's Current status). The product brief is `PRODUCT.md` — a living document for **Bridge Buddy** (working name, placeholder set 2026-05-28 — real name still TBD), a personal bridge-tracking app being built as a gift for a professional bridge engineer. The Vite app lives in `app/`, throwaway API-validation scripts in `phase-0/`.
+This repository is in **Phase 1** (bridge lookup, no auth; see the brief's Current status). Phase 0 (validate APIs + scaffold) closed 2026-05-29 — APIs validated and the empty shell is live on Vercel. The product brief is `PRODUCT.md` — a living document for **Bridge Buddy** (working name, placeholder set 2026-05-28 — real name still TBD), a personal bridge-tracking app being built as a gift for a professional bridge engineer. The Vite app lives in `app/`, throwaway API-validation scripts in `phase-0/`.
 
 There is no code, no build system, no test suite, and no `package.json` yet. When asked to start building, the brief specifies the stack to scaffold (see below). Do not invent commands that don't exist; if asked "how do I run tests," the honest answer is "the project hasn't been initialized."
 

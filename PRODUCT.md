@@ -1,13 +1,13 @@
 # Bridge Buddy — Product Brief
 > Living document. Update this as decisions are made. Last updated: 2026-05-29 (session 2).
 > **Working name:** Bridge Buddy (placeholder — real name still TBD, see §10/§11).
-> **Latest change:** Phase 0 — 0a/0a′/0b/0c/0d complete. App **live on Vercel** at https://bridge-buddy-zeta.vercel.app (root 200, JS+CSS assets 200, hashes match local build). Only **0e** (iPhone Safari visual check at 390px) remains to close Phase 0. See **Current status** below.
+> **Latest change:** **Phase 1 (bridge lookup) functionally complete (2026-05-29) — pending iPhone Safari visual check + deploy.** Search (Nominatim, case-insensitive, deduped, region labels) → results list with structure badge → detail page (badge, facts, Wikipedia summary/photo, OSM-embed map pin). Pipeline `Nominatim → Overpass(bbox) → Wikidata → Wikipedia` verified live. Not yet committed/pushed (batched). See **Current status**.
 
 ---
 
 ## Current status — 2026-05-29 (end of session 2)
 
-**Active phase:** Phase 0 — Validate APIs + scaffold.
+**Active phase:** Phase 1 — Bridge lookup (no auth). **Phase 0 is closed** (all sub-steps ✅).
 
 ### Done
 
@@ -20,17 +20,11 @@
 
 | 0d — Deploy empty shell to Vercel | ✅ | GitHub push done (`origin/main` = `f8dd776`, no secrets leaked). Vercel project imported with **Root Directory = `app`** (first deploy 404'd because that wasn't set; fixed + redeployed). Live at https://bridge-buddy-zeta.vercel.app — root + both assets return 200, asset hashes match local build. 2 Supabase env vars set in Vercel (not yet exercised — `App.tsx` is a static placeholder, no Supabase import). |
 
-### Pending — Phase 0
-
-| Sub-step | Status | What remains |
-|---|---|---|
-| 0e — Verify shell loads on iPhone Safari | ⏳ pending | **Final Phase 0 gate (§5.5).** Open https://bridge-buddy-zeta.vercel.app in iPhone Safari. Confirm "Bridge Buddy / Coming soon" renders, no console errors, looks right at 390px. |
+| 0e — Verify shell loads on iPhone Safari | ✅ | **Final Phase 0 gate (§5.5) — confirmed 2026-05-29.** User opened https://bridge-buddy-zeta.vercel.app in iPhone Safari: "Bridge Buddy / Coming soon" renders, no console errors, looks right at 390px. **Phase 0 closed.** |
 
 ### Resume here (next session) — exact steps
 
-Only **0e** remains in Phase 0: the user opens https://bridge-buddy-zeta.vercel.app in **iPhone Safari** and confirms "Bridge Buddy / Coming soon" renders cleanly at 390px with no console errors. Once she confirms, mark 0e ✅ and **Phase 0 is closed.**
-
-After Phase 0 closes, **Phase 1 begins** — bridge lookup (no auth), built on the OSM aggregated → Wikidata → Wikipedia pipeline. Resolve open decisions #2 (map library), #3 (color palette), #4 ("unknown structure" display), #5 (Overpass timeout), #6 (Wiki disambiguation), #8 (OSM↔Wikidata conflict), #9 (Wikidata→9-type mapping) before/during Phase 1. Note: auto-deploy on `git push` is now wired (Vercel ↔ GitHub), so Phase 1 work ships to the same URL on every push to `main`.
+**Phase 0 is closed — all sub-steps ✅.** **Phase 1 begins** — bridge lookup (no auth), built on the OSM aggregated → Wikidata → Wikipedia pipeline. Resolve open decisions #2 (map library), #3 (color palette), #4 ("unknown structure" display), #5 (Overpass timeout), #6 (Wiki disambiguation), #8 (OSM↔Wikidata conflict), #9 (Wikidata→9-type mapping) before/during Phase 1. Note: auto-deploy on `git push` is now wired (Vercel ↔ GitHub), so Phase 1 work ships to the same URL on every push to `main`.
 
 ### Project facts to carry forward
 
@@ -275,10 +269,21 @@ Initial validation against 4 bridges (Brooklyn, GWB, Hawthorne, Walnut Street) s
 6. **Wikipedia name lookups can land on disambiguation pages** (Walnut Street Bridge returned `type=disambiguation`, 34-char summary, no image). Phase 1 must detect this and handle it — likely by disambiguating with lat/lng from the OSM result.
 
 **Implications for Phase 1:**
-- Use `out tags;` (no element cap) on the Overpass query, not `out tags 5;`
+- Use `out tags center;` on the Overpass query (added `center` to the validated `out tags;` so ways/relations carry a coordinate for the map pin)
 - Aggregate tag values across all returned elements into a set per key; resolve conflicts by preferring more specific values
 - Treat Wikipedia disambiguation responses as a "not found" until we add a picker
 - Cache the aggregated result, not the raw response
+
+### Phase 1 findings + decisions — bridge identity (2026-05-29)
+Building the live lookup pipeline (`app/src/lib/`, smoke-tested via `phase-1/smoke-lookup.ts`) surfaced that **a name is not a unique identity**:
+
+1. **Same name, many bridges.** A bare `["name"="Brooklyn Bridge"]` query returns elements for *every* "Brooklyn Bridge" on the planet (NYC + Norway + Iowa + Las Vegas). Aggregating tags / averaging coordinates across all of them produced a blended record with a wrong coordinate (NYC bridge landed in Connecticut).
+2. **Fix — cluster, then identify.** A name's elements are grouped into distinct physical bridges by **single-linkage proximity clustering** (an element joins a cluster if within ~2 km of any member; contiguous segments of one long bridge chain together, different cities separate). Each cluster is aggregated independently. Search returns one row per cluster.
+3. **Machine ID — synthetic stable key (DECIDED).** Identity = `slug(name)@roundedCoord` (e.g. `brooklyn-bridge@40.71,-74.00`), computed per cluster. Chosen over raw OSM element IDs (a bridge is dozens of elements — no single id) and over a Wikidata-QID key (missing for most regional bridges; would also shift if a QID appeared later). The QID is stored as a *field*, not the key. **This is the §9 `bridge_cache` primary key and the Phase 2 `user_logs` foreign key.**
+4. **Disambiguation UI.** Results show duplicate names as separate rows with a secondary line (city/region) underneath. Source for that label is derived from data already fetched (Wikidata/Wikipedia description) — see Nominatim note below.
+5. **Nominatim considered, DEFERRED.** A dedicated geocoder (Nominatim) would give native distinct results + ready-made location labels, but it's not required for MVP — Overpass name search + clustering covers it. Revisit only if duplicate-name disambiguation gets painful in real use.
+6. **Year-built heuristic.** OSM elements can carry future works dates (GWB had a stray `start_date=2027`). "Year built" = earliest parsed year across all date tags + Wikidata `P571 inception`, so the original construction year wins.
+7. **Overpass can't back a free-text search box → Nominatim is in (RESOLVED 2026-05-29).** Measured: exact `["name"="Brooklyn Bridge"]` returns in **~2 s**; a substring/fuzzy `["name"~"...",i]` makes Overpass scan every named bridge on the planet — **~75 s, unusable**. So search now uses the **Nominatim geocoder** (`nominatim.openstreetmap.org/search`): fast, partial + typo-tolerant, and it returns a "city, state" label for each result (the secondary disambiguation line the user wanted — no longer bare coordinates). This reverses the earlier "defer Nominatim" call; the ~75 s measurement is what changed it. Architecture: **Nominatim resolves the query → located bridge results; Overpass (now bbox-scoped to each result's location) + Wikidata + Wikipedia enrich them.** Bbox-scoping also kills the global name-conflation problem at the source. Policy: ≤1 req/sec (we call it once per search), `User-Agent` in Node, browser `Referer` covers it client-side.
 
 ### Future (V2): National Bridge Inventory (NBI)
 - US government dataset, free download, no live API
@@ -369,14 +374,14 @@ user_logs
 | # | Decision | Options | Deadline |
 |---|---|---|---|
 | 1 | App name | **Working name: Bridge Buddy** (placeholder). Earlier options: BridgeLog, Spanner, Overpass, CrossLog. Real name still TBD. | Before Sprint 2 |
-| 2 | Map library | Leaflet + OSM tiles vs Mapbox free tier | Before Sprint 4 |
-| 3 | Structure type color palette | TBD — pick 9 colors | Before Sprint 2 |
-| 4 | "Unknown structure type" display | Show label vs hide field vs show "?" | Before Sprint 2 |
-| 5 | Overpass fallback | If Overpass times out, show cached result or error? | Before Sprint 1 |
-| 6 | Wikipedia disambiguation | When Wikipedia returns `type=disambiguation`, show a picker, treat as "no article," or use lat/lng + OSM tags to pick the right page? | Before Phase 1 ships |
+| 2 | Map library | **Detail-page single pin: OSM embed iframe (dependency-free) — DECIDED 2026-05-29.** Full multi-pin map library (Leaflet + OSM tiles vs Mapbox) still open, lands in **Phase 3**. | Phase 3 |
+| 3 | Structure type color palette | **PLACEHOLDER in place (2026-05-29).** 9 Tailwind colors are wired into `structureTypes.ts` so the badge works during the build. **CIRCLE BACK: user will pick a proper ColorBrewer qualitative palette (9-class) before ship** — open colorbrewer2.org, 9 classes + qualitative, send the scheme name (e.g. Set1). Swap is a one-file edit (`STRUCTURE_TYPE_COLORS`). Not a blocker for app build. | **Final pick before Phase 4 ship** |
+| 4 | ~~"Unknown structure type" display~~ | **RESOLVED 2026-05-29.** Show a neutral "Structure type unknown" pill (never hidden), per §6. Implemented in `StructureBadge`. | — |
+| 5 | Overpass fallback | If Overpass times out, show cached result or error? Currently: caught → error state with a "try again" message. Cache fallback arrives with the Phase 2 Supabase cache (§9). | Phase 2 |
+| 6 | ~~Wikipedia disambiguation~~ | **RESOLVED 2026-05-29.** Treat `type=disambiguation` as "no article" (graceful gap); a picker is deferred. Bbox-scoped lookup already targets the right bridge by location. | — |
 | 7 | ~~Wikidata as tertiary source~~ | **RESOLVED 2026-05-29.** Wikidata is in for MVP, used as the *secondary* source between OSM and Wikipedia (not deferred to V2). Phase 0 test confirmed it recovers structure type, architect, engineer, and length for bridges OSM doesn't tag. Hybrid bridge types come along for free. | — |
-| 8 | Resolution when OSM and Wikidata disagree on structure type | E.g. Hawthorne: OSM=`truss`, Wikidata=`vertical-lift`. Both correct. Prefer one source? Show both? | Before Phase 1 ships |
-| 9 | Mapping Wikidata bridge subclasses to the 9 canonical types | Need a lookup table (e.g. `vertical-lift bridge → movable`). Build during Phase 1. | Phase 1 |
+| 8 | ~~Resolution when OSM and Wikidata disagree on structure type~~ | **RESOLVED 2026-05-29 — show both.** Both findings render as separate badges (e.g. Hawthorne = `Truss` + `Movable`); it's technically accurate (a truss bridge with a vertical lift) and data stays lossless. Provenance kept in the model. | — |
+| 9 | Mapping Wikidata bridge subclasses to the 9 canonical types | **DRAFT implemented 2026-05-29** (`WIKIDATA_KEYWORD_RULES` in `structureTypes.ts` — keyword rules: vertical-lift/swing/bascule → movable, etc.). Needs a PE review pass for completeness/correctness before ship. | Review before Phase 4 ship |
 
 ---
 
