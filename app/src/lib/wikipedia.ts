@@ -1,4 +1,4 @@
-import { fetchWithTimeout, WIKIMEDIA_HEADERS } from './http'
+import { fetchWithTimeout, wikimediaHeaders } from './http'
 
 // Wikipedia REST summary endpoint — summary text + thumbnail (§7). Coverage is
 // excellent for famous bridges, patchy for regional, nothing for obscure;
@@ -27,7 +27,7 @@ function toTitle(nameOrTag: string): string {
 export async function fetchWikipediaSummary(nameOrTag: string): Promise<WikipediaSummary | null> {
   const title = encodeURIComponent(toTitle(nameOrTag))
   const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${title}`
-  const res = await fetchWithTimeout(url, { headers: WIKIMEDIA_HEADERS })
+  const res = await fetchWithTimeout(url, { headers: wikimediaHeaders() })
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`Wikipedia HTTP ${res.status}`)
   const data = (await res.json()) as SummaryResponse

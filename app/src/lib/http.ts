@@ -1,14 +1,19 @@
 // Shared HTTP concerns for the lookup pipeline.
 
-// Wikimedia policy requires a descriptive User-Agent. Browsers forbid setting
-// `User-Agent` from fetch() (it's silently dropped), so we ALSO send
-// `Api-User-Agent`, which Wikimedia honors and browsers allow. In Node (smoke
-// tests, future server-side caching) the `User-Agent` header is what applies.
+// Wikimedia policy asks for a descriptive User-Agent.
 export const USER_AGENT = 'BridgeBuddy/0.1 (https://bridge-buddy-zeta.vercel.app; jgoog612@gmail.com)'
 
-export const WIKIMEDIA_HEADERS: Record<string, string> = {
-  'User-Agent': USER_AGENT,
-  'Api-User-Agent': USER_AGENT,
+// Headers for Wikimedia (Wikidata/Wikipedia) calls.
+// CRITICAL (Phase 1 bug, 2026-05-29): in the BROWSER send NO custom headers.
+// `User-Agent` is forbidden, and a custom `Api-User-Agent` makes the request
+// non-simple → CORS preflight. Wikidata's `Special:EntityData` rejects that
+// preflight (its Access-Control-Allow-Headers omits api-user-agent), so the
+// browser blocks the call and structure type silently goes "unknown". A plain
+// GET returns Access-Control-Allow-Origin: * and works. The browser's own UA +
+// Referer satisfy Wikimedia policy. Node has no CORS, so it sends User-Agent.
+export function wikimediaHeaders(): Record<string, string> {
+  if (typeof window === 'undefined') return { 'User-Agent': USER_AGENT }
+  return {}
 }
 
 // Default timeout for any single upstream call. Overpass is the slow one;

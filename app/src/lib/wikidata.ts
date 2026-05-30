@@ -1,4 +1,4 @@
-import { fetchWithTimeout, WIKIMEDIA_HEADERS } from './http'
+import { fetchWithTimeout, wikimediaHeaders } from './http'
 import type { StructureFinding } from './bridge'
 import { mapWikidataLabel } from './structureTypes'
 
@@ -42,7 +42,7 @@ interface Entity {
 // Resolve a bridge to a Q-ID: prefer the one OSM already gave us, else search
 // by name and take the first result whose description mentions "bridge" (§7).
 async function searchQid(name: string): Promise<string | null> {
-  const res = await fetchWithTimeout(SEARCH_URL(name), { headers: WIKIMEDIA_HEADERS })
+  const res = await fetchWithTimeout(SEARCH_URL(name), { headers: wikimediaHeaders() })
   if (!res.ok) throw new Error(`Wikidata search HTTP ${res.status}`)
   const data = (await res.json()) as {
     search?: Array<{ id: string; description?: string }>
@@ -52,7 +52,7 @@ async function searchQid(name: string): Promise<string | null> {
 }
 
 async function fetchEntity(qid: string): Promise<Entity | null> {
-  const res = await fetchWithTimeout(ENTITY_URL(qid), { headers: WIKIMEDIA_HEADERS })
+  const res = await fetchWithTimeout(ENTITY_URL(qid), { headers: wikimediaHeaders() })
   if (!res.ok) throw new Error(`Wikidata entity HTTP ${res.status}`)
   const data = (await res.json()) as { entities?: Record<string, Entity> }
   return data.entities?.[qid] ?? null
@@ -62,7 +62,7 @@ async function fetchEntity(qid: string): Promise<Entity | null> {
 // their English labels in one request.
 async function resolveLabels(qids: string[]): Promise<Record<string, string>> {
   if (qids.length === 0) return {}
-  const res = await fetchWithTimeout(LABELS_URL(qids), { headers: WIKIMEDIA_HEADERS })
+  const res = await fetchWithTimeout(LABELS_URL(qids), { headers: wikimediaHeaders() })
   if (!res.ok) return {}
   const data = (await res.json()) as {
     entities?: Record<string, { labels?: { en?: { value: string } } }>
