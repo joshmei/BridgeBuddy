@@ -23,6 +23,7 @@ export interface BridgeSearchResult {
   coordinate: BridgeCoordinate
   region: string | null // e.g. "Brooklyn, New York"
   bbox: BboxLatLng | null // feature bounds — used to scope the Overpass enrichment
+  importance: number // Nominatim prominence score (0..1) — for ranking
 }
 
 interface NominatimPlace {
@@ -33,6 +34,7 @@ interface NominatimPlace {
   category?: string // jsonv2: maps to OSM key (e.g. "man_made", "highway")
   type?: string // e.g. "bridge"
   addresstype?: string
+  importance?: number
   boundingbox?: [string, string, string, string] // [south, north, west, east]
   address?: Record<string, string>
   extratags?: Record<string, string> // raw OSM tags (needs extratags=1)
@@ -91,6 +93,7 @@ function toResult(p: NominatimPlace): BridgeSearchResult {
     coordinate: { lat: Number(p.lat), lng: Number(p.lon) },
     region: regionLabel(p.address),
     bbox,
+    importance: p.importance ?? 0,
   }
 }
 
@@ -119,8 +122,17 @@ async function runSearch(query: string, limit: number): Promise<BridgeSearchResu
 // toward bridges ("Brooklyn" → "Brooklyn bridge"), which surfaces the structure.
 // Distinctive names that already return a bridge (e.g. "Golden Gate") and full
 // names skip the retry, so this only adds a second call when the first finds none.
-export async function searchNominatim(query: string, limit = 8): Promise<BridgeSearchResult[]> {
+//
+// We pull a generous limit (Nominatim's own order isn't by prominence) and sort
+// the bridges by `importance` descending, so a famous bridge floats to the top
+// of whatever the query returned. NOTE: this ranks what Nominatim returns; it
+// can't surface a bridge Nominatim never returns for the query (e.g. "Golden
+// Gate Bridge" is absent for "golden", which lacks the "gate" token).
+export async function searchNominatim(query: string, limit = 20): Promise<BridgeSearchResult[]> {
   const direct = await runSearch(query, limit)
-  if (direct.length > 0 || /\b(bridge|viaduct)\b/i.test(query)) return direct
-  return runSearch(`${query} bridge`, limit)
+  const results =
+    direct.length > 0 || /\b(bridge|viaduct)\b/i.test(query)
+      ? direct
+      : await runSearch(`${query} bridge`, limit)
+  return results.sort((a, b) => b.importance - a.importance)
 }

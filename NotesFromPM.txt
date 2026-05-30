@@ -18,3 +18,30 @@ collision, not a real second bridge.
 with no city — location display should always be 
 "City, Region" format. If city is missing show at minimum 
 the country.
+
+ISSUE 4 — Search results are not ranked by relevance or prominence.
+
+Searching "golden" returns "Golden Bridge, Vietnam" but not 
+"Golden Gate Bridge, San Francisco." This is a search ranking 
+problem — Nominatim returns results in its own order which does 
+not account for how famous or significant a bridge is.
+
+Two things need to happen:
+
+First, the search should return more results from Nominatim than 
+we currently show — we may be capping results too low and the 
+Golden Gate Bridge is simply not in the first few Nominatim 
+results for "golden." Increase the Nominatim result limit to 
+at least 20 before we apply our own filtering and deduplication.
+
+Second, after fetching results, sort them by importance before 
+displaying. Nominatim returns an "importance" score (a float 
+between 0 and 1) on every result — the Golden Gate Bridge will 
+have a much higher importance score than the Golden Bridge in 
+Vietnam. Sort all results by this importance score descending 
+before rendering the list. This means famous bridges always 
+float to the top regardless of what order Nominatim returns them.
+
+This single change will fix the most common frustration a user 
+will have with search — typing a partial name and not seeing 
+the bridge they were obviously looking for at the top.

@@ -1,18 +1,18 @@
 import type { Bridge, StructureFinding } from './bridge'
 import { bridgeId } from './identity'
-import { searchNominatim, type BridgeSearchResult } from './nominatim'
+import { searchPhoton, type BridgeSearchResult } from './photon'
 import { distanceKm, fetchOsmBridgeCandidates, parseYear, type OverpassBbox } from './overpass'
 import { fetchWikidataBridge } from './wikidata'
 import { fetchWikipediaSummary } from './wikipedia'
 
 // The lookup pipeline (PRODUCT.md §7):
-//   1. Nominatim — search engine. Resolves the typed query to located bridge
-//      results (name + coordinate + region label). Fast, partial/fuzzy.
+//   1. Photon — search engine. Prefix/typeahead, bridge-only (osm_tag), returns
+//      located results (name + coordinate + region) ranked by prominence.
 //   2. Overpass — bbox-scoped to each result, aggregates the bridge's tags
 //      (structure type, year, architect) across all its OSM elements.
 //   3. Wikidata + Wikipedia — fill structure/architect/length and summary/photo.
 // Steps 2 + 3's failures are non-fatal: a result still renders from whatever
-// resolved (Nominatim always gives at least name + coordinate + region, §9).
+// resolved (Photon always gives at least name + coordinate + region, §9).
 
 // Earliest of two date strings by parsed year (original construction year).
 function earlierYear(a: string | null, b: string | null): string | null {
@@ -59,7 +59,7 @@ function baseName(name: string): string {
 const DEDUPE_KM = 2
 
 export async function searchBridges(query: string): Promise<BridgeSearchResult[]> {
-  const results = await searchNominatim(query)
+  const results = await searchPhoton(query)
   const unique: BridgeSearchResult[] = []
   for (const r of results) {
     const base = baseName(r.name)
@@ -168,8 +168,28 @@ export async function searchAndEnrich(query: string, limit = 8): Promise<Bridge[
   for (const e of enriched) {
     if (e.resolvedQid && e.wikidataNear) validatedOwners.add(e.resolvedQid)
   }
+  const afterCollision = enriched.filter(
+    (e) => !(e.resolvedQid && !e.wikidataNear && validatedOwners.has(e.resolvedQid)),
+  )
 
-  return enriched
-    .filter((e) => !(e.resolvedQid && !e.wikidataNear && validatedOwners.has(e.resolvedQid)))
-    .map((e) => e.bridge)
+  // Post-enrichment dedupe: one physical bridge can arrive under different OSM
+  // names that only unify after canonical naming — e.g. Photon returns both
+  // "Golden Gate" (bridge=yes) and "Golden Gate Bridge" (man_made=bridge), which
+  // both enrich to Q44440 / "Golden Gate Bridge". Merge by Wikidata QID, else by
+  // canonical name + proximity. Preserves Photon's relevance order.
+  const unique: typeof afterCollision = []
+  for (const e of afterCollision) {
+    const b = e.bridge
+    const dup = unique.some((u) => {
+      if (b.wikidataQid && u.bridge.wikidataQid === b.wikidataQid) return true
+      return (
+        u.bridge.name.toLowerCase() === b.name.toLowerCase() &&
+        b.coordinate != null &&
+        u.bridge.coordinate != null &&
+        distanceKm(u.bridge.coordinate, b.coordinate) <= DEDUPE_KM
+      )
+    })
+    if (!dup) unique.push(e)
+  }
+  return unique.map((e) => e.bridge)
 }
