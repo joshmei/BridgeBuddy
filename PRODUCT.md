@@ -235,6 +235,14 @@ A filter system layered on the **search results** screen, so the user can narrow
 - Tapping navigates back to search results with that person pre-applied as the active architect/engineer filter.
 - If there are no other bridges by that person, show a clear empty state: **"No other bridges by [name] found."**
 
+**6. Discovery / browse from the home screen (PLANNED — approach pending, 2026-05-30)**
+- Goal: a user who doesn't know a bridge's name can **filter their way to it from the home screen** (e.g. by structure type, country, architect) — discovery, not just refining a name search.
+- Constraint: the Phase 1.5 filters above are *client-side* — they refine the results of a name search. With no query there is no result set, and the pipeline is name-driven (Photon is text search). So home-screen filtering needs a new capability to **list bridges by attribute**.
+- Approaches considered (open decision #11):
+  - **A — Place+type browse via Overpass:** list named bridges in a chosen country/state (+ optional structure type). Exhaustive, but large areas are huge/slow, OSM structure tags are sparse, and architect/engineer can't be browsed.
+  - **B — Notable-bridge browse via Wikidata (recommended):** query Wikidata for notable bridges by type / country / architect / engineer, then enrich. Supports all four filter dimensions and returns the famous bridges an engineer wants; covers Wikidata-notable bridges only; adds the Wikidata query endpoint. Natural lead-in: the 9 structure types as home-screen entry points.
+- The Phase 1.5 filter UI/logic is reused; only the *source of the initial result set* changes.
+
 ---
 
 ## 6. Scope rules (do not move these without a decision)
@@ -426,7 +434,8 @@ user_logs
 | 7 | ~~Wikidata as tertiary source~~ | **RESOLVED 2026-05-29.** Wikidata is in for MVP, used as the *secondary* source between OSM and Wikipedia (not deferred to V2). Phase 0 test confirmed it recovers structure type, architect, engineer, and length for bridges OSM doesn't tag. Hybrid bridge types come along for free. | — |
 | 8 | ~~Resolution when OSM and Wikidata disagree on structure type~~ | **RESOLVED 2026-05-29 — show both.** Both findings render as separate badges (e.g. Hawthorne = `Truss` + `Movable`); it's technically accurate (a truss bridge with a vertical lift) and data stays lossless. Provenance kept in the model. | — |
 | 9 | Mapping Wikidata bridge subclasses to the 9 canonical types | **DRAFT implemented 2026-05-29** (`WIKIDATA_KEYWORD_RULES` in `structureTypes.ts` — keyword rules: vertical-lift/swing/bascule → movable, etc.). Needs a PE review pass for completeness/correctness before ship. | Review before Phase 4 ship |
-| 10 | Phase 1.5 filter UI pattern | Bottom sheet vs horizontal chip row vs dropdown (mobile-first, no sidebar). User must approve before build (§5.6). | **Before Phase 1.5 build** |
+| 10 | ~~Phase 1.5 filter UI pattern~~ | **RESOLVED 2026-05-30 — chips + bottom sheet.** Active-filter chip row above results + accordion bottom sheet. Implemented & deployed. | — |
+| 11 | Home-screen discovery/browse source | How to power filtering with no name query (§5.6 #6): **A** Overpass place+type browse, vs **B** Wikidata notable-bridge browse (recommended), vs hybrid. Determines a new data path; reuses the Phase 1.5 filter UI. | **Before discovery build** |
 
 ---
 
