@@ -37,29 +37,38 @@ function bboxFor(result: BridgeSearchResult): OverpassBbox {
   return [lat - d, lng - d, lat + d, lng + d]
 }
 
-// Drop a trailing parenthetical so deck variants collapse together, e.g.
-// "George Washington Bridge (upper level)" → "george washington bridge".
-function normalizeName(name: string): string {
-  return name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase()
+// Strip deck/level qualifiers so the two halves of a double-decked bridge
+// collapse, e.g. "George Washington Bridge Upper Level" / "(Lower Level)" /
+// "... lower" → "George Washington Bridge". Case-preserving (this is the name we
+// display). Handles the suffix with or without parentheses (production Nominatim
+// returns it WITHOUT parens; earlier test data had parens).
+function baseName(name: string): string {
+  return name
+    .replace(/\s*[-–—]?\s*\(?\s*(upper|lower)(\s+(level|deck))?\s*\)?\s*$/i, '')
+    .replace(/\s*\([^)]*\)\s*$/, '') // any other trailing parenthetical
+    .trim()
 }
 
 // Nominatim returns multiple entries for one physical bridge (the relation, its
-// constituent ways, and both end anchors of a long bridge), same name but coords
-// that can differ by ~1-2 km — so a rounded-coordinate key splits them. Collapse
-// by normalized name + proximity instead: a result is a duplicate if one with
-// the same normalized name already sits within 2 km. Keeps the first (best-
-// ranked) entry, and avoids enriching the same bridge several times.
+// constituent ways, both end anchors of a long bridge, and separate upper/lower
+// decks), with names that differ only by a level suffix and coords up to ~1-2 km
+// apart — so a rounded-coordinate key splits them. Collapse by BASE name +
+// proximity: a result is a duplicate if one with the same base name already sits
+// within 2 km. We store and display the base name, and avoid enriching the same
+// bridge several times.
 const DEDUPE_KM = 2
 
 export async function searchBridges(query: string): Promise<BridgeSearchResult[]> {
   const results = await searchNominatim(query)
   const unique: BridgeSearchResult[] = []
   for (const r of results) {
-    const norm = normalizeName(r.name)
+    const base = baseName(r.name)
     const dup = unique.some(
-      (u) => normalizeName(u.name) === norm && distanceKm(u.coordinate, r.coordinate) <= DEDUPE_KM,
+      (u) =>
+        u.name.toLowerCase() === base.toLowerCase() &&
+        distanceKm(u.coordinate, r.coordinate) <= DEDUPE_KM,
     )
-    if (!dup) unique.push(r)
+    if (!dup) unique.push({ ...r, name: base })
   }
   return unique
 }

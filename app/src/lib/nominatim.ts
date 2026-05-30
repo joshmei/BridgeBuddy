@@ -35,16 +35,23 @@ interface NominatimPlace {
   addresstype?: string
   boundingbox?: [string, string, string, string] // [south, north, west, east]
   address?: Record<string, string>
+  extratags?: Record<string, string> // raw OSM tags (needs extratags=1)
 }
 
-// Keep results that are plausibly bridges. Nominatim categorizes bridges
-// inconsistently (man_made=bridge, category=bridge, or a highway way whose name
-// is the bridge), so we accept an explicit bridge category OR a bridge-ish name.
-function looksLikeBridge(p: NominatimPlace): boolean {
+// STRICT: only return features that are ACTUALLY bridges in OSM. A name match
+// is NOT enough — "George Washington" memorials, a "Bridgewater" town, or any
+// place/person-shaped result whose name contains "bridge" must be discarded.
+// A result qualifies only via an OSM bridge tag/category:
+//   - category man_made=bridge, or Nominatim's bridge category / addresstype
+//   - the raw OSM `bridge` tag present (extratags), or man_made=bridge
+// (Note: this correctly KEEPS real footbridges like "George Bridge" / Millennium
+// Bridge, which carry bridge=yes — they are genuine named bridges per §6.)
+function isBridge(p: NominatimPlace): boolean {
   if (p.category === 'man_made' && p.type === 'bridge') return true
   if (p.category === 'bridge') return true
   if (p.addresstype === 'bridge') return true
-  return /\b(bridge|viaduct|crossing|span)\b/i.test(p.name ?? p.display_name ?? '')
+  const ex = p.extratags ?? {}
+  return ex.bridge != null || ex.man_made === 'bridge'
 }
 
 // Compact "locality, region" label from Nominatim's address breakdown.
@@ -85,6 +92,7 @@ async function runSearch(query: string, limit: number): Promise<BridgeSearchResu
     q: query,
     format: 'jsonv2',
     addressdetails: '1',
+    extratags: '1', // needed to read the raw OSM `bridge` tag for strict filtering
     limit: String(limit),
   })
   const headers: Record<string, string> = {}
@@ -93,7 +101,7 @@ async function runSearch(query: string, limit: number): Promise<BridgeSearchResu
   if (!res.ok) throw new Error(`Nominatim HTTP ${res.status}`)
   const places = (await res.json()) as NominatimPlace[]
   return places
-    .filter(looksLikeBridge)
+    .filter(isBridge)
     .map(toResult)
     .filter((r) => r.name !== '')
 }
