@@ -244,6 +244,10 @@ A filter system layered on the **search results** screen, so the user can narrow
 - **Country pinning:** unchanged from #1 — GPS (Nominatim reverse) pins the user's country when permitted (requested only on opening the Country filter), else US first / Canada second / rest alphabetical.
 - **Filter source per screen:** home (pre-search) → bundled static config; search/discovery results → derived from the in-memory result set; Phase 2 My Bridges → `SELECT DISTINCT` per field from `user_logs`.
 
+**Open follow-ups (logged 2026-05-30, revisit when phase work settles):**
+- **(a) Country / structure-type as home producers.** User wants these to *produce* results on the home screen (not just refine), like architect/engineer. Deferred at user's request ("don't care right now, come back when we're done"). Would need a query per facet (Wikidata by P17 country / by P31 type).
+- **(b) Default home list = prominent New York bridges.** Goal: before any search, show prominent NY bridges as the default. **Blocker found:** a live Wikidata query for "bridges located in New York State" (`P131* Q1384` ∩ `P31/P279* bridge`) **504s (~65 s, twice)** — the transitive located-in join over all bridge subtypes is too heavy for the public endpoint, so it can't run on home load. **Planned path:** bundle a curated set of prominent NY bridge QIDs at build/generation time (fetch each by QID — light/reliable — into a static `defaultBridges.json`), so the home page shows them instantly with no runtime query. Pending user go-ahead.
+
 ---
 
 ## 6. Scope rules (do not move these without a decision)
