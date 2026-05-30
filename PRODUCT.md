@@ -235,13 +235,15 @@ A filter system layered on the **search results** screen, so the user can narrow
 - Tapping navigates back to search results with that person pre-applied as the active architect/engineer filter.
 - If there are no other bridges by that person, show a clear empty state: **"No other bridges by [name] found."**
 
-**6. Discovery / browse from the home screen (PLANNED — approach pending, 2026-05-30)**
-- Goal: a user who doesn't know a bridge's name can **filter their way to it from the home screen** (e.g. by structure type, country, architect) — discovery, not just refining a name search.
-- Constraint: the Phase 1.5 filters above are *client-side* — they refine the results of a name search. With no query there is no result set, and the pipeline is name-driven (Photon is text search). So home-screen filtering needs a new capability to **list bridges by attribute**.
-- Approaches considered (open decision #11):
-  - **A — Place+type browse via Overpass:** list named bridges in a chosen country/state (+ optional structure type). Exhaustive, but large areas are huge/slow, OSM structure tags are sparse, and architect/engineer can't be browsed.
-  - **B — Notable-bridge browse via Wikidata (recommended):** query Wikidata for notable bridges by type / country / architect / engineer, then enrich. Supports all four filter dimensions and returns the famous bridges an engineer wants; covers Wikidata-notable bridges only; adds the Wikidata query endpoint. Natural lead-in: the 9 structure types as home-screen entry points.
-- The Phase 1.5 filter UI/logic is reused; only the *source of the initial result set* changes.
+**6. Home-screen filters via a `filter_metadata` table (2026-05-30)**
+- Goal: a user who doesn't know a bridge's name can open the filter panel **on the home screen** (before any search) and see populated options to narrow by.
+- **Filter OPTION lists come from a lightweight Supabase `filter_metadata` table** (§9) — four lists of unique values (`country`, `state`, `architect`, `engineer`). **NOT** a bridge store: no names, coordinates, summaries, or photos. Zero live API calls power these lists, ever.
+- **Seed day-one** (re-runnable script): all 50 US states + 13 Canadian provinces (hardcoded — they don't change), US + Canada as countries, and ~top-50 famous bridge architects/engineers from Wikidata so the panel isn't empty on first use.
+- **Write-through growth:** on every bridge **detail-page view**, silently upsert that bridge's country / state(+parent country) / architect / engineer into `filter_metadata` if missing. Non-blocking, background. The table self-populates from real usage — no cron, no polling, no pre-load.
+- **Progressive load on the home screen:** query US states first (should paint <200ms so the panel opens instantly populated); load countries / architects / engineers async after first render.
+- **Country pinning:** unchanged from #1 — GPS (Nominatim reverse) pins the user's country when permitted (requested only on opening the Country filter), else default to US first / Canada second / rest alphabetical.
+- **Filter source per screen (explicit):** home (pre-search) → `filter_metadata` only; search results → derived from the in-memory result set (no extra calls); Phase 2 My Bridges → `SELECT DISTINCT` per field from `user_logs`.
+- **OPEN (decision #11):** populating the *options* is fully specified above, but **what produces the matching bridge list when a home-screen filter is applied** is not yet decided (the metadata table holds no bridges, and we make no API calls for the lists). Needs a results source on apply (e.g. a Wikidata query) — pending.
 
 ---
 
@@ -402,9 +404,18 @@ user_logs
   visit_date  date nullable      -- the actual date she crossed it (may differ from logged_at)
   notes       text nullable
   created_at  timestamp
+
+filter_metadata                  -- powers home-screen filter OPTION lists (§5.6 #6)
+  id          uuid PK
+  type        text               -- 'country' | 'state' | 'architect' | 'engineer'
+  value       text               -- e.g. "United States", "New Jersey", "Joseph Strauss"
+  parent      text nullable      -- for 'state', the parent country; null otherwise
+  UNIQUE (type, value, parent)   -- dedupe on write-through
 ```
 
 **Caching rationale:** Rather than hitting Overpass + Wikipedia on every view, cache bridge data in Supabase after the first lookup. Refresh if `cached_at` is older than 30 days.
+
+**`filter_metadata` rationale (§5.6 #6):** A lightweight lookup of *filter option values only* — NOT bridge records (no names, coordinates, summaries, photos). It exists solely to populate the home-screen filter dropdowns without live API calls. Seeded day-one (all 50 US states, 13 Canadian provinces, US+Canada, ~top-50 famous bridge architects/engineers from Wikidata) via a re-runnable seed script. **Self-grows via write-through:** when a user views a bridge detail page, its country/state/architect/engineer are upserted in the background (non-blocking). RLS: public `SELECT`; `INSERT` allowed for the write-through (anon) but constrained to the four `type` values — see §13.
 
 ---
 
@@ -435,7 +446,7 @@ user_logs
 | 8 | ~~Resolution when OSM and Wikidata disagree on structure type~~ | **RESOLVED 2026-05-29 — show both.** Both findings render as separate badges (e.g. Hawthorne = `Truss` + `Movable`); it's technically accurate (a truss bridge with a vertical lift) and data stays lossless. Provenance kept in the model. | — |
 | 9 | Mapping Wikidata bridge subclasses to the 9 canonical types | **DRAFT implemented 2026-05-29** (`WIKIDATA_KEYWORD_RULES` in `structureTypes.ts` — keyword rules: vertical-lift/swing/bascule → movable, etc.). Needs a PE review pass for completeness/correctness before ship. | Review before Phase 4 ship |
 | 10 | ~~Phase 1.5 filter UI pattern~~ | **RESOLVED 2026-05-30 — chips + bottom sheet.** Active-filter chip row above results + accordion bottom sheet. Implemented & deployed. | — |
-| 11 | Home-screen discovery/browse source | How to power filtering with no name query (§5.6 #6): **A** Overpass place+type browse, vs **B** Wikidata notable-bridge browse (recommended), vs hybrid. Determines a new data path; reuses the Phase 1.5 filter UI. | **Before discovery build** |
+| 11 | Home-screen filter RESULTS source | Filter *options* are decided: the `filter_metadata` table (§5.6 #6, §9). Still open: when a home-screen filter is **applied**, what produces the matching bridge list? The metadata table holds no bridges and we make no API calls for the option lists — so applying needs a results source (likely a Wikidata query). | **Before home-filter results build** |
 
 ---
 
@@ -462,7 +473,8 @@ These are things that will naturally come up during the build. The answer is no,
 
 Non-negotiable gates tied to the phases that introduce the risk. These block the named phase from shipping.
 
-- **Supabase Row Level Security — before Phase 2 ships.** RLS must be **enabled on all tables** (`users`, `bridge_cache`, `user_logs`) with policies in place before Phase 2 (auth + personal log) ships. Supabase tables are publicly reachable via the anon key, so without RLS any client could read or write every user's logs. `user_logs` must be owner-scoped (a user reads/writes only their own rows); `bridge_cache` is shared read, writes restricted to the service role. Verify RLS is on for every table — a table with RLS disabled is open to the anon key regardless of intent.
+- **Supabase Row Level Security — before Phase 2 ships.** RLS must be **enabled on all tables** (`users`, `bridge_cache`, `user_logs`, `filter_metadata`) with policies in place before Phase 2 (auth + personal log) ships. Supabase tables are publicly reachable via the anon key, so without RLS any client could read or write every user's logs. `user_logs` must be owner-scoped (a user reads/writes only their own rows); `bridge_cache` is shared read, writes restricted to the service role. Verify RLS is on for every table — a table with RLS disabled is open to the anon key regardless of intent.
+- **`filter_metadata` RLS — before the Phase 1.5 home-screen filters ship (NOT Phase 2).** This is the *first* table written by the browser anon client (the write-through cache, §5.6 #6), so it pulls Supabase security forward into Phase 1.5. Policy: public `SELECT`; `INSERT` permitted for anon but **constrained** — `type ∈ {country,state,architect,engineer}`, `value` length-capped, and no `UPDATE`/`DELETE` for anon. Without this, the anon key could write arbitrary rows. Enable RLS on this table the moment it's created.
 - **App Store privacy policy + nutrition labels — before Phase 5.** Phase 5 (native iOS Beta) introduces background location, which Apple treats as sensitive data. A published **privacy policy URL** and accurate **App Privacy "nutrition" labels** (declaring background location collection and its use) are required before the Beta is submitted to App Store Connect — Apple rejects submissions that collect location without them.
 
 ---
