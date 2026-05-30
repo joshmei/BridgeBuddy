@@ -19,11 +19,14 @@ const LABELS_URL = (qids: string[]) =>
 
 export interface WikidataBridgeData {
   qid: string
+  label: string | null // canonical English label, e.g. "Golden Gate Bridge"
   structures: StructureFinding[]
   yearBuilt: string | null
   architect: string | null
   engineer: string | null
   lengthMeters: number | null
+  coordinate: { lat: number; lng: number } | null // P625 — for location validation
+  wikipediaTitle: string | null // enwiki sitelink title, for the correct article
 }
 
 interface Claim {
@@ -36,6 +39,8 @@ interface Claim {
 }
 
 interface Entity {
+  labels?: Record<string, { value: string }>
+  sitelinks?: Record<string, { title: string }>
   claims?: Record<string, Claim[]>
 }
 
@@ -151,12 +156,26 @@ export async function fetchWikidataBridge(opts: {
       ? quantityToMeters(lengthClaim.value as { amount?: string; unit?: string })
       : null
 
+  // P625 coordinate location — used to detect namesake collisions (a name search
+  // can resolve a local bridge to a famous one that's actually far away).
+  const coordClaim = claims.P625?.[0]?.mainsnak?.datavalue
+  const coordinate =
+    coordClaim?.type === 'globecoordinate'
+      ? {
+          lat: (coordClaim.value as { latitude: number }).latitude,
+          lng: (coordClaim.value as { longitude: number }).longitude,
+        }
+      : null
+
   return {
     qid,
+    label: entity.labels?.en?.value ?? null,
     structures,
     yearBuilt,
     architect: architectIds.map((id) => labels[id]).filter(Boolean).join(', ') || null,
     engineer: engineerIds.map((id) => labels[id]).filter(Boolean).join(', ') || null,
     lengthMeters,
+    coordinate,
+    wikipediaTitle: entity.sitelinks?.enwiki?.title ?? null,
   }
 }

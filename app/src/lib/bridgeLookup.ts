@@ -73,53 +73,103 @@ export async function searchBridges(query: string): Promise<BridgeSearchResult[]
   return unique
 }
 
-// Enrich one search result into a full Bridge. OSM is bbox-scoped to the result;
-// Wikidata + Wikipedia run in parallel. If OSM finds nothing (name mismatch
-// between Nominatim and the OSM `name` tag), we still return a useful record
-// from Nominatim + Wikidata + Wikipedia.
-export async function enrichSearchResult(result: BridgeSearchResult): Promise<Bridge> {
+// Beyond this distance, a name-resolved Wikidata entity is NOT this result's
+// bridge — it's a namesake collision (e.g. a Queensland "Golden Gate Bridge"
+// resolving to the San Francisco entity ~12,000 km away).
+const MAX_MISMATCH_KM = 50
+
+interface EnrichedResult {
+  bridge: Bridge
+  resolvedQid: string | null // the Wikidata entity this name/tag resolved to
+  wikidataNear: boolean // entity coordinate is near the result (or unknown)
+}
+
+// Enrich one search result. Pipeline per result is serial — OSM (bbox-scoped) →
+// Wikidata → Wikipedia — because each step feeds the next: OSM gives the wikidata
+// QID + wikipedia tag; the validated Wikidata entity gives the canonical name and
+// the correct enwiki article title.
+async function enrichWithMeta(result: BridgeSearchResult): Promise<EnrichedResult> {
   const candidates = await fetchOsmBridgeCandidates(result.name, bboxFor(result)).catch(() => [])
   const osm = candidates[0] ?? null
-
-  const [wikidata, wikipedia] = await Promise.all([
-    fetchWikidataBridge({ qid: osm?.wikidataQid, name: result.name }).catch(() => null),
-    fetchWikipediaSummary(osm?.wikipediaTitle ?? result.name).catch(() => null),
-  ])
-
   const coordinate = osm?.coordinate ?? result.coordinate
+
+  const wikidata = await fetchWikidataBridge({ qid: osm?.wikidataQid, name: result.name }).catch(
+    () => null,
+  )
+
+  // Location-validate the Wikidata match. A name search can resolve a local
+  // bridge to a famous same-named one elsewhere; if the entity's coordinate is
+  // far from this result, the match is a collision and its data must not be used.
+  const wikidataNear =
+    !wikidata?.coordinate || distanceKm(coordinate, wikidata.coordinate) <= MAX_MISMATCH_KM
+  const useWikidata = wikidata != null && wikidataNear
+
+  // Pick the Wikipedia article title: validated Wikidata sitelink (correct +
+  // upgrades a short OSM name like "Golden Gate" to the real article) → OSM's own
+  // wikipedia tag → the result name. Skip the name when Wikidata told us it's a
+  // far-away namesake, so we don't pull the famous bridge's article either.
+  let wpTitle: string | null = null
+  if (useWikidata && wikidata.wikipediaTitle) wpTitle = wikidata.wikipediaTitle
+  else if (osm?.wikipediaTitle) wpTitle = osm.wikipediaTitle
+  else if (!(wikidata && !wikidataNear)) wpTitle = result.name
+  const wikipedia = wpTitle ? await fetchWikipediaSummary(wpTitle).catch(() => null) : null
+
+  // Canonical name from the validated Wikidata label (fixes short OSM names like
+  // "Golden Gate" → "Golden Gate Bridge"); otherwise the search-result name.
+  const name = useWikidata && wikidata.label ? wikidata.label : result.name
+
   // Lossless union of structure findings (provenance kept; conflict display is
   // open decision #8).
   const structures: StructureFinding[] = [
     ...(osm?.structures ?? []),
-    ...(wikidata?.structures ?? []),
+    ...(useWikidata ? wikidata.structures : []),
   ]
 
-  return {
-    id: osm?.id ?? bridgeId(result.name, coordinate),
-    name: result.name,
+  const bridge: Bridge = {
+    id: bridgeId(name, coordinate),
+    name,
     region: result.region,
     coordinate,
     structures,
-    yearBuilt: earlierYear(osm?.yearBuilt ?? null, wikidata?.yearBuilt ?? null),
-    architect: osm?.architect ?? wikidata?.architect ?? null,
-    engineer: osm?.engineer ?? wikidata?.engineer ?? null,
-    lengthMeters: wikidata?.lengthMeters ?? null,
+    yearBuilt: earlierYear(osm?.yearBuilt ?? null, useWikidata ? wikidata.yearBuilt : null),
+    architect: osm?.architect ?? (useWikidata ? wikidata.architect : null),
+    engineer: osm?.engineer ?? (useWikidata ? wikidata.engineer : null),
+    lengthMeters: useWikidata ? wikidata.lengthMeters : null,
     summary: wikipedia?.summary ?? null,
     thumbnailUrl: wikipedia?.thumbnailUrl ?? null,
     wikipediaUrl: wikipedia?.pageUrl ?? null,
-    wikidataQid: osm?.wikidataQid ?? wikidata?.qid ?? null,
-    sources: {
-      osm: osm != null,
-      wikidata: wikidata != null,
-      wikipedia: wikipedia != null,
-    },
+    wikidataQid: useWikidata ? wikidata.qid : null,
+    sources: { osm: osm != null, wikidata: useWikidata, wikipedia: wikipedia != null },
   }
+
+  return { bridge, resolvedQid: wikidata?.qid ?? null, wikidataNear }
+}
+
+// Public single-result enrichment (used by tooling/smoke tests).
+export async function enrichSearchResult(result: BridgeSearchResult): Promise<Bridge> {
+  return (await enrichWithMeta(result)).bridge
 }
 
 // Search + enrich every result, so cards carry the structure badge (the #1
 // feature, CLAUDE.md). `limit` bounds the API fan-out. Phase 2's Supabase cache
 // (§9) makes repeats instant.
+//
+// Final pass removes namesake collisions: if a result resolved to a Wikidata
+// entity that's far away (not near), AND another result legitimately OWNS that
+// same entity (resolved to it AND is near it), the far one is a collision and is
+// dropped — e.g. the Queensland "Golden Gate Bridge" is removed once the SF one
+// validates Q44440. Bridges with no validated owner of their entity are kept, so
+// genuinely-distinct same-named bridges survive.
 export async function searchAndEnrich(query: string, limit = 8): Promise<Bridge[]> {
   const results = (await searchBridges(query)).slice(0, limit)
-  return Promise.all(results.map(enrichSearchResult))
+  const enriched = await Promise.all(results.map(enrichWithMeta))
+
+  const validatedOwners = new Set<string>()
+  for (const e of enriched) {
+    if (e.resolvedQid && e.wikidataNear) validatedOwners.add(e.resolvedQid)
+  }
+
+  return enriched
+    .filter((e) => !(e.resolvedQid && !e.wikidataNear && validatedOwners.has(e.resolvedQid)))
+    .map((e) => e.bridge)
 }

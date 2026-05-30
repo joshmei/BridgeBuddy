@@ -1,0 +1,20 @@
+Three issues from latest testing:
+
+1. "golden gate" (partial) returns "Golden Gate" not 
+"Golden Gate Bridge" — the result name is truncated. 
+It's the right bridge but the name should display in 
+full as "Golden Gate Bridge."
+
+2. Searching "golden gate bridge" returns two results — 
+San Francisco (correct) and Queensland (wrong). There is 
+no Golden Gate Bridge in Queensland — it is pulling the 
+San Francisco bridge data but attaching a Queensland 
+location from a different OSM entry. The Queensland result 
+should be removed. It's showing the SF photo, SF architect, 
+SF length, SF year — but wrong location. This is a data 
+collision, not a real second bridge.
+
+3. The Queensland result's detail page shows "Queensland" 
+with no city — location display should always be 
+"City, Region" format. If city is missing show at minimum 
+the country.

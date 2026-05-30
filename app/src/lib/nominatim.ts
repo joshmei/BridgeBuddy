@@ -54,7 +54,9 @@ function isBridge(p: NominatimPlace): boolean {
   return ex.bridge != null || ex.man_made === 'bridge'
 }
 
-// Compact "locality, region" label from Nominatim's address breakdown.
+// "City, Region" label from Nominatim's address breakdown. Always two parts when
+// possible; if there's no city, fall back to region + country (or at minimum the
+// country) — never a lone region like "Queensland".
 function regionLabel(address: Record<string, string> | undefined): string | null {
   if (!address) return null
   const locality =
@@ -63,11 +65,16 @@ function regionLabel(address: Record<string, string> | undefined): string | null
     address.village ??
     address.suburb ??
     address.borough ??
+    address.hamlet ??
     address.county ??
     null
-  const region = address.state ?? address.province ?? address.country ?? null
-  const parts = [locality, region].filter(Boolean)
-  return parts.length > 0 ? parts.join(', ') : (address.country ?? null)
+  const region = address.state ?? address.province ?? null
+  const country = address.country ?? null
+  const parts: string[] = []
+  if (locality) parts.push(locality)
+  if (region) parts.push(region)
+  if (parts.length < 2 && country) parts.push(country)
+  return parts.slice(0, 2).join(', ') || country || null
 }
 
 function toResult(p: NominatimPlace): BridgeSearchResult {
