@@ -54,6 +54,17 @@ export function SearchScreen() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
   const runId = useRef(0)
 
+  // "Clear all" → back to the home state so the full option lists return (not
+  // the result-narrowed set). Clearing the architect/engineer that produced a
+  // discovery set logically returns to home.
+  function clearAll() {
+    runId.current++ // cancel any in-flight lookup
+    setFilters(EMPTY_FILTERS)
+    setResults([])
+    setStatus('idle')
+    setSearched('')
+  }
+
   // Detail-page architect/engineer link → refine the CURRENT results to that
   // person (§5.6 #5).
   function filterByPerson(field: 'architect' | 'engineer', value: string) {
@@ -161,6 +172,7 @@ export function SearchScreen() {
               filters={filters}
               onChange={setFilters}
               onSelectPerson={hasResults ? undefined : runDiscovery}
+              onClearAll={clearAll}
             />
 
             {hasResults ? (

@@ -90,6 +90,7 @@ export function FilterControls({
   filters,
   onChange,
   onSelectPerson,
+  onClearAll,
 }: {
   options: FilterOptions
   filters: Filters
@@ -97,6 +98,9 @@ export function FilterControls({
   // When provided (home screen), tapping an architect/engineer triggers a
   // discovery search rather than a client-side refine.
   onSelectPerson?: (role: PersonRole, value: string) => void
+  // "Clear all" resets to the home state (full option lists return). If absent,
+  // it just empties the filters.
+  onClearAll?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -171,7 +175,11 @@ export function FilterControls({
               <h2 className="text-base font-semibold text-slate-900">Filters</h2>
               <button
                 type="button"
-                onClick={() => onChange({ ...filters, country: null, state: null, structureTypes: [], architect: null, engineer: null })}
+                onClick={() =>
+                  onClearAll
+                    ? onClearAll()
+                    : onChange({ country: null, state: null, structureTypes: [], architect: null, engineer: null })
+                }
                 disabled={!isFilterActive(filters)}
                 className="text-xs font-medium text-slate-500 disabled:opacity-40"
               >

@@ -39,12 +39,35 @@ async function fetchPeople(property, limit) {
   return data.results.bindings.map((b) => b.name.value)
 }
 
+// All current countries (Wikidata Q6256, P31 with no end date). Bounded (~200)
+// and light — unlike scanning every bridge's P17 (which 504s). Same Wikidata
+// English labels that discovery results carry, so client-side country filtering
+// matches.
+async function fetchCountries() {
+  const query = `SELECT DISTINCT ?name WHERE {
+    ?c wdt:P31 wd:Q6256 .
+    FILTER NOT EXISTS { ?c wdt:P576 ?dissolved }
+    ?c rdfs:label ?name . FILTER(LANG(?name) = "en")
+  }`
+  const url = `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`
+  const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/sparql-results+json' } })
+  if (!res.ok) throw new Error(`Wikidata SPARQL HTTP ${res.status}`)
+  const data = await res.json()
+  return data.results.bindings.map((b) => b.name.value)
+}
+
 const architects = await fetchPeople('P84', 40)
 const engineers = await fetchPeople('P631', 40)
+const countriesRaw = await fetchCountries()
+// Comprehensive list (US/Canada guaranteed present), sorted; UI pins the user's
+// country (or US by default) to the top.
+const countries = [...new Set([...countriesRaw, 'United States', 'Canada'])]
+  .filter((c) => c && c.length <= 120)
+  .sort((a, b) => a.localeCompare(b))
 
 const data = {
   _generated: 'phase-1/gen-seed.mjs — re-run to refresh',
-  countries: ['United States', 'Canada'],
+  countries,
   statesByCountry: {
     'United States': US_STATES,
     Canada: CA_PROVINCES,
