@@ -100,14 +100,34 @@ export function MyBridgesScreen({ active }: { active: boolean }) {
     await signOut()
   }
 
+  // Identity comes straight from Supabase auth metadata, auto-populated by Google
+  // on sign-in (§9.5) — no public.users table, nothing to write. A custom
+  // display_name (Phase 4) would override the Google name here when present.
+  const meta = user.user_metadata ?? {}
+  const displayName: string =
+    meta.display_name || meta.full_name || meta.name || user.email || 'You'
+  const avatarUrl: string | undefined = meta.avatar_url || meta.picture
+
   return (
     <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-6 pb-28">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">My Bridges</h1>
+      <header className="flex items-center gap-3">
+        {avatarUrl ? (
+          // referrerPolicy avoids Google blocking the avatar when the referrer is sent.
+          <img
+            src={avatarUrl}
+            alt=""
+            referrerPolicy="no-referrer"
+            className="h-10 w-10 shrink-0 rounded-full object-cover"
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm text-slate-500">{displayName}</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">My Bridges</h1>
+        </div>
         <button
           type="button"
           onClick={onSignOut}
-          className="text-sm font-medium text-slate-500 hover:text-slate-900"
+          className="shrink-0 text-sm font-medium text-slate-500 hover:text-slate-900"
         >
           Sign out
         </button>
