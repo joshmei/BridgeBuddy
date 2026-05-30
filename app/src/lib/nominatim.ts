@@ -38,10 +38,11 @@ interface NominatimPlace {
 }
 
 // Keep results that are plausibly bridges. Nominatim categorizes bridges
-// inconsistently (man_made=bridge, or a highway way whose name is the bridge),
-// so we accept an explicit bridge category OR a bridge-ish name.
+// inconsistently (man_made=bridge, category=bridge, or a highway way whose name
+// is the bridge), so we accept an explicit bridge category OR a bridge-ish name.
 function looksLikeBridge(p: NominatimPlace): boolean {
   if (p.category === 'man_made' && p.type === 'bridge') return true
+  if (p.category === 'bridge') return true
   if (p.addresstype === 'bridge') return true
   return /\b(bridge|viaduct|crossing|span)\b/i.test(p.name ?? p.display_name ?? '')
 }
@@ -79,7 +80,7 @@ function toResult(p: NominatimPlace): BridgeSearchResult {
   }
 }
 
-export async function searchNominatim(query: string, limit = 8): Promise<BridgeSearchResult[]> {
+async function runSearch(query: string, limit: number): Promise<BridgeSearchResult[]> {
   const params = new URLSearchParams({
     q: query,
     format: 'jsonv2',
@@ -95,4 +96,16 @@ export async function searchNominatim(query: string, limit = 8): Promise<BridgeS
     .filter(looksLikeBridge)
     .map(toResult)
     .filter((r) => r.name !== '')
+}
+
+// Partial names like "Brooklyn" or "Hawthorne" make Nominatim return places
+// (boroughs, towns) and no bridge, so the raw search comes back empty. When that
+// happens — and the query doesn't already say bridge/viaduct — retry biased
+// toward bridges ("Brooklyn" → "Brooklyn bridge"), which surfaces the structure.
+// Distinctive names that already return a bridge (e.g. "Golden Gate") and full
+// names skip the retry, so this only adds a second call when the first finds none.
+export async function searchNominatim(query: string, limit = 8): Promise<BridgeSearchResult[]> {
+  const direct = await runSearch(query, limit)
+  if (direct.length > 0 || /\b(bridge|viaduct)\b/i.test(query)) return direct
+  return runSearch(`${query} bridge`, limit)
 }
