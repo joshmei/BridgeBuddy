@@ -1,0 +1,492 @@
+[
+  {
+    "id": "brooklyn-bridge@40.71,-74.00",
+    "name": "Brooklyn Bridge",
+    "region": "New York, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 40.70540451785714,
+      "lng": -73.99595823571427
+    },
+    "structures": [
+      {
+        "type": "suspension",
+        "source": "wikidata",
+        "raw": "suspension bridge"
+      },
+      {
+        "type": "cable-stayed",
+        "source": "wikidata",
+        "raw": "cable-stayed bridge"
+      }
+    ],
+    "yearBuilt": "1883-05-24",
+    "architect": "John Augustus Roebling",
+    "engineer": "John Augustus Roebling",
+    "lengthMeters": 1825,
+    "summary": "The Brooklyn Bridge is a cable-stayed suspension bridge in New York City, spanning the East River between the boroughs of Manhattan and Brooklyn. Opened on May 24, 1883, the Brooklyn Bridge was the first fixed crossing of the East River. It was also the longest suspension bridge in the world when opened, with a main span of 1,595.5 feet (486.3 m) and a deck 127 ft (38.7 m) above mean high water. The span was originally called the New York and Brooklyn Bridge or the East River Bridge but was officially renamed the Brooklyn Bridge in 1915.",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Brooklyn_Bridge_Manhattan.jpg/330px-Brooklyn_Bridge_Manhattan.jpg",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Brooklyn_Bridge",
+    "wikidataQid": "Q125006",
+    "sources": {
+      "osm": true,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "george-washington-bridge@40.85,-73.94",
+    "name": "George Washington Bridge",
+    "region": "Fort Lee, New Jersey",
+    "country": "United States",
+    "state": "New Jersey",
+    "coordinate": {
+      "lat": 40.849095,
+      "lng": -73.941684
+    },
+    "structures": [
+      {
+        "type": "suspension",
+        "source": "wikidata",
+        "raw": "suspension bridge"
+      }
+    ],
+    "yearBuilt": "1962-08-29T00:00:00Z",
+    "architect": "Othmar Hermann Ammann, Cass Gilbert",
+    "engineer": "Othmar Hermann Ammann",
+    "lengthMeters": 1450,
+    "summary": "The George Washington Bridge is a double-decked suspension bridge spanning the Hudson River, connecting Fort Lee in Bergen County, New Jersey, with the Washington Heights neighborhood of Manhattan, New York City. It is named after George Washington, a Founding Father of the United States and the country's first president. The George Washington Bridge is the world's busiest motor vehicle bridge, carrying a traffic volume of over 104 million vehicles in 2019, and is the world's only suspension bridge with 14 vehicular lanes. The George Washington Bridge measures 4,760 feet (1,450 m) long, and its main span is 3,500 feet (1,100 m) long. It was the longest main bridge span in the world from its 1931 opening until the Golden Gate Bridge in San Francisco opened in 1937.",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/George_Washington_Bridge_from_New_Jersey-edit.jpg/330px-George_Washington_Bridge_from_New_Jersey-edit.jpg",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/George_Washington_Bridge",
+    "wikidataQid": "Q125821",
+    "sources": {
+      "osm": true,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "verrazzano-narrows-bridge@40.61,-74.04",
+    "name": "Verrazzano-Narrows Bridge",
+    "region": "New York, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 40.60688068333334,
+      "lng": -74.04384875
+    },
+    "structures": [
+      {
+        "type": "suspension",
+        "source": "wikidata",
+        "raw": "suspension bridge"
+      }
+    ],
+    "yearBuilt": "1964-00-00T00:00:00Z",
+    "architect": null,
+    "engineer": "Othmar Hermann Ammann, Leopold Just",
+    "lengthMeters": 4176,
+    "summary": "The Verrazzano–Narrows Bridge is a suspension bridge connecting the boroughs of Staten Island and Brooklyn in New York City, New York, U.S. It spans the Narrows, a body of water linking the relatively enclosed New York Harbor with Lower New York Bay and the Atlantic Ocean. It is the only fixed crossing of the Narrows. The double-deck bridge carries 13 lanes of Interstate 278: seven on the upper level and six on the lower level. The span is named for Giovanni da Verrazzano, who in 1524 was the first European explorer to enter New York Harbor and the Hudson River.",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Verrazano_Bridge2.jpg/330px-Verrazano_Bridge2.jpg",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Verrazzano%E2%80%93Narrows_Bridge",
+    "wikidataQid": "Q125673",
+    "sources": {
+      "osm": true,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "manhattan-bridge@40.71,-73.99",
+    "name": "Manhattan Bridge",
+    "region": "New York, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 40.705256025,
+      "lng": -73.989468825
+    },
+    "structures": [
+      {
+        "type": "suspension",
+        "source": "osm",
+        "raw": "suspension"
+      },
+      {
+        "type": "suspension",
+        "source": "wikidata",
+        "raw": "suspension bridge"
+      }
+    ],
+    "yearBuilt": "1909-12-31",
+    "architect": "Leon Moisseiff",
+    "engineer": "Leon Moisseiff",
+    "lengthMeters": 2090,
+    "summary": "The Manhattan Bridge is a suspension bridge that crosses the East River in New York City, connecting Lower Manhattan at Canal Street with Downtown Brooklyn at the Flatbush Avenue Extension. Designed by Leon Moisseiff, the bridge has a total length of 6,855 ft (2,089 m). The bridge is one of four vehicular bridges directly connecting Manhattan Island and Long Island; the nearby Brooklyn Bridge is just slightly farther west, while the Queensboro and Williamsburg bridges are to the north.",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Manhattan_Bridge_January_2023_003.jpg/330px-Manhattan_Bridge_January_2023_003.jpg",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Manhattan_Bridge",
+    "wikidataQid": "Q125050",
+    "sources": {
+      "osm": true,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "williamsburg-bridge@40.71,-73.97",
+    "name": "Williamsburg Bridge",
+    "region": "New York, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 40.712720023076926,
+      "lng": -73.9664305076923
+    },
+    "structures": [
+      {
+        "type": "suspension",
+        "source": "wikidata",
+        "raw": "suspension bridge"
+      }
+    ],
+    "yearBuilt": null,
+    "architect": "Leffert L. Buck",
+    "engineer": "Leffert L. Buck",
+    "lengthMeters": 2227,
+    "summary": "The Williamsburg Bridge is a suspension bridge across the East River in New York City, connecting the Lower East Side of Manhattan with the Williamsburg neighborhood of Brooklyn. Originally known as the East River Bridge, the Williamsburg Bridge was completed in 1903 and, at 7,308 feet (2,227 m) long, was the longest suspension bridge span in the world until 1924.",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Williamsburg_Bridge_full.jpg/330px-Williamsburg_Bridge_full.jpg",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Williamsburg_Bridge",
+    "wikidataQid": "Q125068",
+    "sources": {
+      "osm": true,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "queensboro-bridge@40.76,-73.95",
+    "name": "Queensboro Bridge",
+    "region": "New York, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 40.755489,
+      "lng": -73.9513125
+    },
+    "structures": [
+      {
+        "type": "cantilever",
+        "source": "wikidata",
+        "raw": "cantilever bridge"
+      }
+    ],
+    "yearBuilt": "1909",
+    "architect": "Henry Hornbostel",
+    "engineer": "Leffert L. Buck",
+    "lengthMeters": 1135,
+    "summary": "The Queensboro Bridge, officially the Ed Koch Queensboro Bridge, is a cantilever bridge over the East River in New York City. Completed in 1909, it connects the Long Island City neighborhood in the borough of Queens with the East Midtown and Upper East Side neighborhoods in Manhattan, passing over Roosevelt Island. Because the western end of the bridge connects to 59th Street in Manhattan, it is also called the 59th Street Bridge. The bridge consists of five steel spans measuring 3,725 ft (1,135 m) long; including approaches, its total length is 7,449 ft (2,270 m).",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Queensboro_Bridge_from_Manhattan_side.jpg/330px-Queensboro_Bridge_from_Manhattan_side.jpg",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Queensboro_Bridge",
+    "wikidataQid": "Q125157",
+    "sources": {
+      "osm": true,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "bronx-whitestone-bridge@40.80,-73.83",
+    "name": "Bronx–Whitestone Bridge",
+    "region": "New York, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 40.80331475,
+      "lng": -73.8305398
+    },
+    "structures": [
+      {
+        "type": "suspension",
+        "source": "wikidata",
+        "raw": "suspension bridge"
+      }
+    ],
+    "yearBuilt": "1939-04-29T00:00:00Z",
+    "architect": "Othmar Hermann Ammann",
+    "engineer": "Othmar Hermann Ammann",
+    "lengthMeters": 1149,
+    "summary": "The Bronx–Whitestone Bridge is a suspension bridge in New York City, carrying six lanes of Interstate 678 over the East River. The bridge connects Throggs Neck and Ferry Point Park in the Bronx, on the East River's northern shore, with the Whitestone neighborhood of Queens on the southern shore.",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Whitestone_Bridge_from_Clason_Point_Park.jpg/330px-Whitestone_Bridge_from_Clason_Point_Park.jpg",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Bronx%E2%80%93Whitestone_Bridge",
+    "wikidataQid": "Q125543",
+    "sources": {
+      "osm": true,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "throgs-neck-bridge@40.79,-73.79",
+    "name": "Throgs Neck Bridge",
+    "region": "New York, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 40.792875425,
+      "lng": -73.79280994999999
+    },
+    "structures": [
+      {
+        "type": "suspension",
+        "source": "wikidata",
+        "raw": "suspension bridge"
+      }
+    ],
+    "yearBuilt": "1961-01-11T00:00:00Z",
+    "architect": null,
+    "engineer": "Othmar Hermann Ammann",
+    "lengthMeters": 887,
+    "summary": "The Throgs Neck Bridge is a suspension bridge in New York City, carrying six lanes of Interstate 295 (I-295) over the East River where it meets the Long Island Sound. The bridge connects the Throggs Neck section of the Bronx with the Bay Terrace section of Queens.",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/ThrogsNeckBridge.jpg/330px-ThrogsNeckBridge.jpg",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Throgs_Neck_Bridge",
+    "wikidataQid": "Q125575",
+    "sources": {
+      "osm": true,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "hell-gate-bridge@40.78,-73.92",
+    "name": "Hell Gate Bridge",
+    "region": "New York, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 40.7825447,
+      "lng": -73.9219926
+    },
+    "structures": [
+      {
+        "type": "arch",
+        "source": "osm",
+        "raw": "arch"
+      },
+      {
+        "type": "arch",
+        "source": "wikidata",
+        "raw": "arch bridge"
+      }
+    ],
+    "yearBuilt": "1916-09-30T00:00:00Z",
+    "architect": null,
+    "engineer": "Gustav Lindenthal",
+    "lengthMeters": 310,
+    "summary": "The Hell Gate Bridge is a railroad bridge in New York City. The bridge carries two tracks of Amtrak's Northeast Corridor and one freight track between Astoria, Queens, and Port Morris, Bronx, via Randalls and Wards Islands. Its main span is a 1,017-foot (310 m) steel through arch across Hell Gate, a strait of the East River that separates Wards Island from Queens. The bridge also includes several approach viaducts and two spans across smaller waterways; including these spans, the bridge is 17,000 feet (5,200 m) long. It is one of the few rail connections from Long Island, of which Queens is part, to the continental United States.",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Hell_Gate_Bridge_%2860275p%29.jpg/330px-Hell_Gate_Bridge_%2860275p%29.jpg",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Hell_Gate_Bridge",
+    "wikidataQid": "Q1035131",
+    "sources": {
+      "osm": true,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "robert-f-kennedy-bridge@40.78,-73.93",
+    "name": "Robert F. Kennedy Bridge",
+    "region": "New York, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 40.781173707692304,
+      "lng": -73.92602773846156
+    },
+    "structures": [
+      {
+        "type": "suspension",
+        "source": "wikidata",
+        "raw": "suspension bridge"
+      },
+      {
+        "type": "movable",
+        "source": "wikidata",
+        "raw": "vertical-lift bridge"
+      },
+      {
+        "type": "truss",
+        "source": "wikidata",
+        "raw": "truss bridge"
+      }
+    ],
+    "yearBuilt": "1936-07-11T00:00:00Z",
+    "architect": null,
+    "engineer": "Othmar Hermann Ammann",
+    "lengthMeters": null,
+    "summary": "The Robert F. Kennedy Bridge is a complex of bridges and elevated expressway viaducts in New York City. The bridges link the boroughs of Manhattan, Queens, and the Bronx. The viaducts cross Randalls and Wards Islands, previously two islands and now joined by landfill.",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Randalls_and_Wards_Islands.JPG/330px-Randalls_and_Wards_Islands.JPG",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Robert_F._Kennedy_Bridge",
+    "wikidataQid": "Q125450",
+    "sources": {
+      "osm": true,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "henry-hudson-bridge@40.88,-73.92",
+    "name": "Henry Hudson Bridge",
+    "region": "New York, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 40.8778251,
+      "lng": -73.9221151
+    },
+    "structures": [
+      {
+        "type": "arch",
+        "source": "wikidata",
+        "raw": "deck arch bridge"
+      }
+    ],
+    "yearBuilt": "1938-05-07T00:00:00Z",
+    "architect": null,
+    "engineer": "David B. Steinman",
+    "lengthMeters": 673,
+    "summary": "The Henry Hudson Bridge is a double-deck steel arch toll bridge in New York City across the Spuyten Duyvil Creek. It connects Spuyten Duyvil in the Bronx with Inwood in Manhattan to the south, via the Henry Hudson Parkway. On the Manhattan side, the parkway goes into Inwood Hill Park. Commercial vehicles are not permitted on this bridge or on the parkway in general.",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Henry_Hudson_Bridge_20171010-jag9889.jpg/330px-Henry_Hudson_Bridge_20171010-jag9889.jpg",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Henry_Hudson_Bridge",
+    "wikidataQid": "Q7718385",
+    "sources": {
+      "osm": false,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "kosciuszko-bridge@40.73,-73.93",
+    "name": "Kosciuszko Bridge",
+    "region": "New York, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 40.72760635,
+      "lng": -73.93068905
+    },
+    "structures": [
+      {
+        "type": "truss",
+        "source": "osm",
+        "raw": "truss"
+      }
+    ],
+    "yearBuilt": null,
+    "architect": null,
+    "engineer": null,
+    "lengthMeters": 1835,
+    "summary": "The Kosciuszko Bridge, originally known as the Meeker Avenue Bridge, is a cable-stayed bridge over Newtown Creek in New York City, connecting Greenpoint in Brooklyn to Maspeth in Queens. The bridge consists of a pair of cable-stayed bridge spans: the eastbound span opened in April 2017, while the westbound span opened in August 2019. An older bridge, a truss bridge of the same name that was located on the site of the westbound cable-stayed span, was originally opened in 1939 and was closed and demolished in 2017. The crossing is part of the Brooklyn–Queens Expressway (BQE), which carries Interstate 278.",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Kosciuszko_Bridge_2025a.jpg/330px-Kosciuszko_Bridge_2025a.jpg",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Kosciuszko_Bridge",
+    "wikidataQid": "Q6433023",
+    "sources": {
+      "osm": true,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "tappan-zee-bridge@41.07,-73.87",
+    "name": "Tappan Zee Bridge",
+    "region": "Blauvelt, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 41.0706167,
+      "lng": -73.8731956
+    },
+    "structures": [
+      {
+        "type": "cantilever",
+        "source": "wikidata",
+        "raw": "cantilever bridge"
+      }
+    ],
+    "yearBuilt": "1955-12-15T00:00:00Z",
+    "architect": null,
+    "engineer": null,
+    "lengthMeters": 4881,
+    "summary": "The Tappan Zee Bridge, officially named Governor Malcolm Wilson Tappan Zee Bridge, was a cantilever bridge in the U.S. state of New York. It was built from 1952 to 1955 to cross the Hudson River at one of its widest points, 25 miles (40 km) north of Midtown Manhattan, from South Nyack to Tarrytown. As an integral conduit within the New York Metropolitan Area, the bridge connected South Nyack in Rockland County with Tarrytown in Westchester County in the Lower Hudson Valley.",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/TappanZeeBridgeFromBelow.JPG/330px-TappanZeeBridgeFromBelow.JPG",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Tappan_Zee_Bridge_(1955%E2%80%932017)",
+    "wikidataQid": "Q125841",
+    "sources": {
+      "osm": false,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "marine-parkway-gil-hodges-memorial-bridge@40.57,-73.88",
+    "name": "Marine Parkway-Gil Hodges Memorial Bridge",
+    "region": "New York, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 40.5734801,
+      "lng": -73.88491996
+    },
+    "structures": [
+      {
+        "type": "movable",
+        "source": "wikidata",
+        "raw": "vertical-lift bridge"
+      }
+    ],
+    "yearBuilt": null,
+    "architect": null,
+    "engineer": null,
+    "lengthMeters": 1226,
+    "summary": "The Marine Parkway–Gil Hodges Memorial Bridge is a vertical-lift bridge in New York City, New York, that crosses Rockaway Inlet. The bridge, which opened on July 3, 1937, connects the Rockaway Peninsula in Queens, with Flatbush Avenue, in turn providing access to Floyd Bennett Field, Belt Parkway, and the Marine Park neighborhood in Brooklyn. The bridge is designated as New York State Route 901B, an unsigned reference route.",
+    "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/MarineParkwayBridgeOfficial.jpg/330px-MarineParkwayBridgeOfficial.jpg",
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Marine_Parkway%E2%80%93Gil_Hodges_Memorial_Bridge",
+    "wikidataQid": "Q2487804",
+    "sources": {
+      "osm": true,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  },
+  {
+    "id": "macombs-dam-bridge@40.83,-73.93",
+    "name": "Macombs Dam Bridge",
+    "region": "New York, New York",
+    "country": "United States",
+    "state": "New York",
+    "coordinate": {
+      "lat": 40.82847675,
+      "lng": -73.93121146666667
+    },
+    "structures": [
+      {
+        "type": "movable",
+        "source": "wikidata",
+        "raw": "swing bridge"
+      }
+    ],
+    "yearBuilt": null,
+    "architect": null,
+    "engineer": null,
+    "lengthMeters": null,
+    "summary": "The Macombs Dam Bridge is a swing bridge across the Harlem River in New York City, connecting the boroughs of Manhattan and the Bronx. The bridge is operated and maintained by the New York City Department of Transportation (NYCDOT).",
+    "thumbnailUrl": null,
+    "wikipediaUrl": "https://en.wikipedia.org/wiki/Macombs_Dam_Bridge",
+    "wikidataQid": "Q6724821",
+    "sources": {
+      "osm": true,
+      "wikidata": true,
+      "wikipedia": true
+    }
+  }
+]

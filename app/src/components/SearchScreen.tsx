@@ -5,9 +5,14 @@ import { searchAndEnrich } from '../lib/bridgeLookup'
 import { searchBridgesByPerson, type PersonRole } from '../lib/wikidataDiscovery'
 import { applyFilters, deriveOptions, EMPTY_FILTERS, type Filters } from '../lib/filters'
 import { homeFilterOptions } from '../lib/filterMetadata'
+import defaultBridgesData from '../data/defaultBridges.json'
 import { StructureBadge } from './StructureBadge'
 import { DetailScreen } from './DetailScreen'
 import { FilterControls } from './FilterControls'
+
+// Curated prominent New York bridges, generated at build time
+// (phase-1/gen-default-bridges.ts) — the default home browse before any search.
+const DEFAULT_BRIDGES = defaultBridgesData as Bridge[]
 
 type Status = 'idle' | 'loading' | 'error' | 'done'
 
@@ -46,40 +51,46 @@ function BridgeCard({ bridge, onSelect }: { bridge: Bridge; onSelect: (b: Bridge
 
 export function SearchScreen() {
   const [query, setQuery] = useState('')
-  const [status, setStatus] = useState<Status>('idle')
-  const [results, setResults] = useState<Bridge[]>([])
+  // Default home view = the curated New York list (instant, bundled).
+  const [status, setStatus] = useState<Status>('done')
+  const [results, setResults] = useState<Bridge[]>(DEFAULT_BRIDGES)
+  const [isDefault, setIsDefault] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searched, setSearched] = useState('')
   const [selected, setSelected] = useState<Bridge | null>(null)
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+  // True only when the active person filter came from a detail-page link (so the
+  // "No other bridges by X" empty state applies); false for discovery browsing.
+  const [linkPerson, setLinkPerson] = useState(false)
   const runId = useRef(0)
 
-  // "Clear all" → back to the home state so the full option lists return (not
-  // the result-narrowed set). Clearing the architect/engineer that produced a
-  // discovery set logically returns to home.
-  function clearAll() {
-    runId.current++ // cancel any in-flight lookup
-    setFilters(EMPTY_FILTERS)
-    setResults([])
-    setStatus('idle')
+  function backToDefault() {
+    runId.current++
+    setResults(DEFAULT_BRIDGES)
+    setIsDefault(true)
+    setStatus('done')
+    setError(null)
     setSearched('')
+    setFilters(EMPTY_FILTERS)
+    setLinkPerson(false)
   }
 
   // Detail-page architect/engineer link → refine the CURRENT results to that
   // person (§5.6 #5).
   function filterByPerson(field: 'architect' | 'engineer', value: string) {
     setFilters({ ...EMPTY_FILTERS, [field]: value })
+    setLinkPerson(true)
     setSelected(null)
   }
 
-  // Home-screen discovery: pick an architect/engineer with no search → query
-  // Wikidata for their bridges (§5.6 #6, decision #11). Keeps any country/type
-  // filters already set so they refine the discovered set.
+  // Home-screen discovery: pick an architect/engineer → Wikidata bridges-by-person.
   async function runDiscovery(role: PersonRole, value: string) {
     const id = ++runId.current
     setStatus('loading')
     setError(null)
     setSearched(value)
+    setIsDefault(false)
+    setLinkPerson(false)
     setFilters({ ...filters, architect: null, engineer: null, [role]: value })
     try {
       const bridges = await searchBridgesByPerson(value, role)
@@ -107,6 +118,8 @@ export function SearchScreen() {
     setStatus('loading')
     setError(null)
     setSearched(name)
+    setIsDefault(false)
+    setLinkPerson(false)
     setFilters(EMPTY_FILTERS)
     try {
       const bridges = await searchAndEnrich(name)
@@ -123,10 +136,18 @@ export function SearchScreen() {
   const hasResults = status === 'done' && results.length > 0
   const filtered = hasResults ? applyFilters(results, filters) : []
   const personName = filters.architect ?? filters.engineer
-  const personEmpty = personName != null && filtered.length <= 1
-  // Options: from the current result set once we have one; otherwise the bundled
-  // home config (instant, no network).
-  const options = hasResults ? deriveOptions(results, filters.country) : homeFilterOptions(filters.country)
+  const personEmpty = linkPerson && personName != null && filtered.length <= 1
+  // Options: derived from the result set only for a real search/discovery;
+  // otherwise (home default or empty) the full bundled config.
+  const browseMode = isDefault || !hasResults
+  const options = browseMode ? homeFilterOptions(filters.country) : deriveOptions(results, filters.country)
+
+  // Contextual label above the list.
+  let listLabel: string | null = null
+  if (hasResults && !personEmpty) {
+    if (isDefault) listLabel = 'Popular bridges in New York'
+    else if (personName) listLabel = `Bridges by ${personName}`
+  }
 
   return (
     <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 py-6">
@@ -171,9 +192,13 @@ export function SearchScreen() {
               options={options}
               filters={filters}
               onChange={setFilters}
-              onSelectPerson={hasResults ? undefined : runDiscovery}
-              onClearAll={clearAll}
+              onSelectPerson={browseMode ? runDiscovery : undefined}
+              onClearAll={backToDefault}
             />
+
+            {listLabel ? (
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{listLabel}</p>
+            ) : null}
 
             {hasResults ? (
               personEmpty ? (
@@ -192,12 +217,7 @@ export function SearchScreen() {
                 No named bridge found for “{searched}”. Try a different spelling, or open Filters to
                 browse by architect or engineer.
               </p>
-            ) : (
-              <p className="text-sm text-slate-500">
-                Search by name (partial works, e.g. “golden”), or open <span className="font-medium">Filters</span>{' '}
-                to browse by architect or engineer.
-              </p>
-            )}
+            ) : null}
           </div>
         )}
       </section>
