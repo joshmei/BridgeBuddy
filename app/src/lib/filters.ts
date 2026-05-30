@@ -22,6 +22,17 @@ export const EMPTY_FILTERS: Filters = {
   engineer: null,
 }
 
+// Architect / engineer fields can hold several people ("Ammann, Cass Gilbert").
+// We treat them as individual names everywhere — so each is a distinct filter
+// option and each is independently discoverable (Wikidata matches one label).
+export function splitNames(value: string | null | undefined): string[] {
+  if (!value) return []
+  return value
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
 export function isFilterActive(f: Filters): boolean {
   return (
     f.country != null ||
@@ -49,8 +60,8 @@ export function applyFilters(bridges: Bridge[], f: Filters): Bridge[] {
       const types = new Set(b.structures.map((s) => s.type))
       if (!f.structureTypes.some((t) => types.has(t))) return false
     }
-    if (f.architect && b.architect !== f.architect) return false
-    if (f.engineer && b.engineer !== f.engineer) return false
+    if (f.architect && !splitNames(b.architect).includes(f.architect)) return false
+    if (f.engineer && !splitNames(b.engineer).includes(f.engineer)) return false
     return true
   })
 }
@@ -78,8 +89,8 @@ export function deriveOptions(bridges: Bridge[], selectedCountry: string | null)
       ? uniqueSorted(bridges.filter((b) => b.country === selectedCountry).map((b) => b.state))
       : [],
     structureTypes: STRUCTURE_TYPES.filter((t) => presentTypes.has(t)),
-    architects: uniqueSorted(bridges.map((b) => b.architect)),
-    engineers: uniqueSorted(bridges.map((b) => b.engineer)),
+    architects: uniqueSorted(bridges.flatMap((b) => splitNames(b.architect))),
+    engineers: uniqueSorted(bridges.flatMap((b) => splitNames(b.engineer))),
   }
 }
 

@@ -2,7 +2,9 @@ import { useRef, useState } from 'react'
 import type { Bridge } from '../lib/bridge'
 import { parseYear } from '../lib/overpass'
 import { searchAndEnrich } from '../lib/bridgeLookup'
-import { applyFilters, EMPTY_FILTERS, type Filters } from '../lib/filters'
+import { searchBridgesByPerson, type PersonRole } from '../lib/wikidataDiscovery'
+import { applyFilters, deriveOptions, EMPTY_FILTERS, type Filters } from '../lib/filters'
+import { homeFilterOptions } from '../lib/filterMetadata'
 import { StructureBadge } from './StructureBadge'
 import { DetailScreen } from './DetailScreen'
 import { FilterControls } from './FilterControls'
@@ -52,20 +54,37 @@ export function SearchScreen() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
   const runId = useRef(0)
 
-  // Tapping an architect/engineer on the detail page: return to the results list
-  // with only that person applied as the active filter (§5.6 #5).
+  // Detail-page architect/engineer link → refine the CURRENT results to that
+  // person (§5.6 #5).
   function filterByPerson(field: 'architect' | 'engineer', value: string) {
     setFilters({ ...EMPTY_FILTERS, [field]: value })
     setSelected(null)
   }
 
+  // Home-screen discovery: pick an architect/engineer with no search → query
+  // Wikidata for their bridges (§5.6 #6, decision #11). Keeps any country/type
+  // filters already set so they refine the discovered set.
+  async function runDiscovery(role: PersonRole, value: string) {
+    const id = ++runId.current
+    setStatus('loading')
+    setError(null)
+    setSearched(value)
+    setFilters({ ...filters, architect: null, engineer: null, [role]: value })
+    try {
+      const bridges = await searchBridgesByPerson(value, role)
+      if (id !== runId.current) return
+      setResults(bridges)
+      setStatus('done')
+    } catch (err) {
+      if (id !== runId.current) return
+      setError(err instanceof Error ? err.message : 'Lookup failed')
+      setStatus('error')
+    }
+  }
+
   if (selected) {
     return (
-      <DetailScreen
-        bridge={selected}
-        onBack={() => setSelected(null)}
-        onFilterByPerson={filterByPerson}
-      />
+      <DetailScreen bridge={selected} onBack={() => setSelected(null)} onFilterByPerson={filterByPerson} />
     )
   }
 
@@ -77,10 +96,10 @@ export function SearchScreen() {
     setStatus('loading')
     setError(null)
     setSearched(name)
-    setFilters(EMPTY_FILTERS) // a fresh search clears any active filters
+    setFilters(EMPTY_FILTERS)
     try {
       const bridges = await searchAndEnrich(name)
-      if (id !== runId.current) return // a newer search superseded this one
+      if (id !== runId.current) return
       setResults(bridges)
       setStatus('done')
     } catch (err) {
@@ -90,11 +109,13 @@ export function SearchScreen() {
     }
   }
 
-  const filtered = applyFilters(results, filters)
+  const hasResults = status === 'done' && results.length > 0
+  const filtered = hasResults ? applyFilters(results, filters) : []
   const personName = filters.architect ?? filters.engineer
-  // A person filter (from a detail-page link) with no others in the set → the
-  // dedicated empty state, rather than re-showing the one bridge they came from.
   const personEmpty = personName != null && filtered.length <= 1
+  // Options: from the current result set once we have one; otherwise the bundled
+  // home config (instant, no network).
+  const options = hasResults ? deriveOptions(results, filters.country) : homeFilterOptions(filters.country)
 
   return (
     <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 py-6">
@@ -125,47 +146,48 @@ export function SearchScreen() {
       </form>
 
       <section className="mt-5">
-        {status === 'idle' ? (
-          <p className="text-sm text-slate-500">
-            Search by name — partial names work (e.g. “golden”). Named bridges only; anonymous
-            overpasses and culverts are excluded by design.
-          </p>
-        ) : null}
-
         {status === 'loading' ? (
           <p className="text-sm text-slate-500">Searching for “{searched}”…</p>
-        ) : null}
-
-        {status === 'error' ? (
+        ) : status === 'error' ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             <p className="font-medium">Lookup failed</p>
             <p className="mt-1 text-red-700">{error}</p>
-            <p className="mt-1 text-red-700">The search service can be slow under load — try again.</p>
+            <p className="mt-1 text-red-700">The service can be slow under load — try again.</p>
           </div>
-        ) : null}
-
-        {status === 'done' && results.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            No named bridge found for “{searched}”. Try a different spelling or a shorter name.
-          </p>
-        ) : null}
-
-        {status === 'done' && results.length > 0 ? (
+        ) : (
           <div className="space-y-3">
-            <FilterControls bridges={results} filters={filters} onChange={setFilters} />
-            {personEmpty ? (
-              <p className="text-sm text-slate-500">No other bridges by {personName} found.</p>
-            ) : filtered.length === 0 ? (
-              <p className="text-sm text-slate-500">No bridges match these filters.</p>
+            <FilterControls
+              options={options}
+              filters={filters}
+              onChange={setFilters}
+              onSelectPerson={hasResults ? undefined : runDiscovery}
+            />
+
+            {hasResults ? (
+              personEmpty ? (
+                <p className="text-sm text-slate-500">No other bridges by {personName} found.</p>
+              ) : filtered.length === 0 ? (
+                <p className="text-sm text-slate-500">No bridges match these filters.</p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {filtered.map((bridge) => (
+                    <BridgeCard key={bridge.id} bridge={bridge} onSelect={setSelected} />
+                  ))}
+                </ul>
+              )
+            ) : status === 'done' ? (
+              <p className="text-sm text-slate-500">
+                No named bridge found for “{searched}”. Try a different spelling, or open Filters to
+                browse by architect or engineer.
+              </p>
             ) : (
-              <ul className="space-y-2.5">
-                {filtered.map((bridge) => (
-                  <BridgeCard key={bridge.id} bridge={bridge} onSelect={setSelected} />
-                ))}
-              </ul>
+              <p className="text-sm text-slate-500">
+                Search by name (partial works, e.g. “golden”), or open <span className="font-medium">Filters</span>{' '}
+                to browse by architect or engineer.
+              </p>
             )}
           </div>
-        ) : null}
+        )}
       </section>
     </main>
   )

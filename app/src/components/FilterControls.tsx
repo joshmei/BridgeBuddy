@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import type { Bridge } from '../lib/bridge'
 import { STRUCTURE_TYPE_LABELS } from '../lib/structureTypes'
 import {
   DEFAULT_PIN,
-  deriveOptions,
   hasStates,
   isFilterActive,
   orderCountries,
+  type FilterOptions,
   type Filters,
 } from '../lib/filters'
 import { detectPinnedCountry, type PinnedCountry } from '../lib/geolocate'
+
+export type PersonRole = 'architect' | 'engineer'
 
 // Phase 1.5 filter UI: a chip row (active filters, at-a-glance + removable) above
 // the results, backed by a bottom sheet with accordion sections. Mobile-first,
@@ -85,21 +86,34 @@ function Section({
 }
 
 export function FilterControls({
-  bridges,
+  options,
   filters,
   onChange,
+  onSelectPerson,
 }: {
-  bridges: Bridge[]
+  options: FilterOptions
   filters: Filters
   onChange: (f: Filters) => void
+  // When provided (home screen), tapping an architect/engineer triggers a
+  // discovery search rather than a client-side refine.
+  onSelectPerson?: (role: PersonRole, value: string) => void
 }) {
   const [open, setOpen] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [pin, setPin] = useState<PinnedCountry | null>(null)
   const [countryTried, setCountryTried] = useState(false)
 
-  const options = deriveOptions(bridges, filters.country)
   const set = (patch: Partial<Filters>) => onChange({ ...filters, ...patch })
+  const pickPerson = (role: PersonRole, value: string) => {
+    if (onSelectPerson) {
+      onSelectPerson(role, value)
+      setOpen(false)
+      return
+    }
+    const cur = role === 'architect' ? filters.architect : filters.engineer
+    const next = cur === value ? null : value
+    set(role === 'architect' ? { architect: next } : { engineer: next })
+  }
 
   // Active-filter chips for the bar above results.
   const chips: Array<{ label: string; onRemove: () => void }> = []
@@ -237,7 +251,7 @@ export function FilterControls({
                     key={a}
                     label={a}
                     selected={filters.architect === a}
-                    onClick={() => set({ architect: filters.architect === a ? null : a })}
+                    onClick={() => pickPerson('architect', a)}
                   />
                 ))}
               </Section>
@@ -255,7 +269,7 @@ export function FilterControls({
                     key={e}
                     label={e}
                     selected={filters.engineer === e}
-                    onClick={() => set({ engineer: filters.engineer === e ? null : e })}
+                    onClick={() => pickPerson('engineer', e)}
                   />
                 ))}
               </Section>
