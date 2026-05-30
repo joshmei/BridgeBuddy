@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
-import { supabase } from './supabase'
+import { supabase, isSupabaseConfigured } from './supabase'
 
 // Auth context for Bridge Buddy (Phase 2).
 //
@@ -66,6 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       closeAuthPrompt: () => setPromptOpen(false),
 
       async signInWithGoogle() {
+        if (!isSupabaseConfigured) {
+          throw new Error(
+            'Sign-in is temporarily unavailable — the app is not connected to its backend yet.',
+          )
+        }
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: { redirectTo: window.location.origin },
