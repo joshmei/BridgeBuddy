@@ -1,13 +1,13 @@
 # Bridge Buddy — Product Brief
 > Living document. Update this as decisions are made. Last updated: 2026-05-31 (session 4).
 > **Working name:** Bridge Buddy (placeholder — real name still TBD, see §10/§11).
-> **Latest change (2026-05-31, session 4):** **Phase 2 COMPLETE & verified live.** Google Sign-In, "I've Crossed This" saving to Supabase, crossing-count increment on re-tap, and My Bridges all confirmed working end-to-end on the deployed app (after a Vercel env-var fix — the `VITE_`-prefixed vars must be set for Production and a fresh build run). **Now in Phase 2.5 — UI & navigation polish (no new features):** persistent top-right sign-in/avatar on the search home, and the Search bottom-tab always returning to a clean home. See §5.5 Phase 2 + Phase 2.5.
+> **Latest change (2026-05-31, session 4):** **Phases 2 AND 2.5 COMPLETE & verified live.** Phase 2: Google Sign-In, "I've Crossed This" saving to Supabase, crossing-count increment on re-tap, and My Bridges — all confirmed end-to-end on the deployed app (after a Vercel env-var fix — the `VITE_`-prefixed vars must be set for Production and a fresh build run). Phase 2.5 (polish, no new features): persistent top-right sign-in/avatar on the search home, and the Search bottom-tab always returning to a clean home — confirmed on device. **Next: Phase 3 — Map + stats.** See §5.5 Phase 2 + 2.5.
 
 ---
 
 ## Current status — 2026-05-31 (session 4)
 
-**Active phase:** Phase 2.5 — UI & navigation polish. **Phases 0, 1, 1.5, and 2 are closed** (all live + deployed). Phase 2 (Google auth + Supabase logging + My Bridges + Stats) is **verified working end-to-end on the live app**. Phase 2.5 adds two polish items only — no new features (§5.5 Phase 2.5).
+**Active phase:** none active — between phases. **Phases 0, 1, 1.5, 2, and 2.5 are closed** (all live + deployed + verified). Phase 2 (Google auth + Supabase logging + My Bridges + Stats) and Phase 2.5 (home sign-in/avatar + Search-tab reset) are both **verified working end-to-end on the live app**. **Next up: Phase 3 — Map + stats** (Leaflet multi-pin map of logged bridges; resolve open decision #2, full map library).
 
 ### Done
 
@@ -183,8 +183,8 @@ The earlier localStorage-only POC was reversed mid-session: a per-device log los
 - **Done when:** She signs in with Google, taps "I've Crossed This" on a bridge, sees it in My Bridges with the right dates/count, and Stats reflects it — and it all survives a fresh device/login.
 - **Deliberately NOT in this phase (deferred):** "Seen" status; a **notes-entry UI** (the `notes` column exists and is displayed, but input lands in Phase 4 polish); editing/deleting logs; a social layer (comments, likes, a feed among her + coworkers).
 
-### Phase 2.5 — UI & navigation polish (2026-05-31, session 4) — NO new features
-A small, contained polish pass on top of Phase 2. No new features, no new data.
+### Phase 2.5 — UI & navigation polish (2026-05-31, session 4) — ✅ COMPLETE & verified live — NO new features
+A small, contained polish pass on top of Phase 2. No new features, no new data. **Both changes confirmed working on device.**
 - **CHANGE 1 — Persistent sign-in / avatar on the search home.** A control in the **top-right of the Search (home) screen**, visible immediately on app open:
   - **Logged out:** a subtle **"Sign in"** button → opens the existing auth overlay (`openAuthPrompt`). This is *in addition to* the sign-in prompt that already fires on "I've Crossed This" — both entry points work.
   - **Logged in:** her **Google avatar** as a small circle (initial-letter fallback if no photo) → navigates to the **My Bridges** tab.
