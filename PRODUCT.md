@@ -1,13 +1,13 @@
 # Bridge Buddy — Product Brief
-> Living document. Update this as decisions are made. Last updated: 2026-05-30 (session 3).
+> Living document. Update this as decisions are made. Last updated: 2026-05-31 (session 4).
 > **Working name:** Bridge Buddy (placeholder — real name still TBD, see §10/§11).
-> **Latest change (2026-05-30, session 3):** **Phase 2 scope RE-REVISED — Supabase is back in.** The single-user localStorage POC (planned earlier 2026-05-30) is superseded: the log must survive a new phone / cleared browser / device switch, so it goes to Supabase. Built this session: **Google Sign-In** (Supabase OAuth — chosen over Apple, which needs a paid dev account; over email/password for frictionless first use), `bridge_cache` + `user_logs` tables with **RLS**, the **"I've Crossed This"** button (with `first_recorded_crossing` / `last_crossing` / `crossing_count`), **My Bridges**, and a basic **Stats** screen. Migration SQL in `supabase/migrations/`. See §5.5 Phase 2, §9, §13.
+> **Latest change (2026-05-31, session 4):** **Phase 2 COMPLETE & verified live.** Google Sign-In, "I've Crossed This" saving to Supabase, crossing-count increment on re-tap, and My Bridges all confirmed working end-to-end on the deployed app (after a Vercel env-var fix — the `VITE_`-prefixed vars must be set for Production and a fresh build run). **Now in Phase 2.5 — UI & navigation polish (no new features):** persistent top-right sign-in/avatar on the search home, and the Search bottom-tab always returning to a clean home. See §5.5 Phase 2 + Phase 2.5.
 
 ---
 
-## Current status — 2026-05-30 (session 3)
+## Current status — 2026-05-31 (session 4)
 
-**Active phase:** Phase 2 — Auth + personal log (Supabase). **Phases 0, 1, and 1.5 are closed** (all live + deployed). Phase 2 code is written (auth, schema, logging, My Bridges, Stats); **gated on the user completing one-time Supabase/Google setup** (paste the two SQL migrations; configure the Google OAuth provider) before it's exercised end-to-end.
+**Active phase:** Phase 2.5 — UI & navigation polish. **Phases 0, 1, 1.5, and 2 are closed** (all live + deployed). Phase 2 (Google auth + Supabase logging + My Bridges + Stats) is **verified working end-to-end on the live app**. Phase 2.5 adds two polish items only — no new features (§5.5 Phase 2.5).
 
 ### Done
 
@@ -143,7 +143,7 @@ GPS detects bridge crossings automatically in the background. Works when she's a
 Pulls in the National Bridge Inventory (NBI) for all ~620,000 US bridges. Adds engineering-grade data: span length, deck width, load rating, material, condition rating. Also: user photo attachments, rich notes, milestone badges (first suspension bridge, all 50 states, etc.).
 
 ### V3 — Community
-Social layer for bridge engineers and enthusiasts. Shareable public profiles, comments on individual bridges, follow friends, leaderboards (most bridges crossed, rarest types seen), community data contributions back to OSM.
+Social layer for bridge engineers and enthusiasts. Shareable public profiles, comments on individual bridges, follow friends, leaderboards (most bridges crossed, rarest types seen), community data contributions back to OSM. Connection between users happens through a **Buddies tab** (full spec in §5.5 Phase 7).
 
 **Note logged:** V3 social features were specifically requested — shared profiles and commenting with other bridge engineers.
 
@@ -169,7 +169,9 @@ The version roadmap in §5 describes *what* each release contains. This section 
 - **Done when:** From a multi-result search she can stack a country + structure-type filter and see results narrow (AND logic); architect/engineer filters appear only when that data exists in the result set; tapping an architect on a detail page returns to results filtered to that architect (with a clear empty state if there are no others).
 - **Carries forward:** The same filter UI + logic is reused on the Phase 2 **My Bridges** log screen.
 
-### Phase 2 — Auth + personal log (Supabase) — SCOPE RE-REVISED 2026-05-30 (session 3)
+### Phase 2 — Auth + personal log (Supabase) — ✅ COMPLETE & verified live 2026-05-31 (session 4)
+**Verified end-to-end on the deployed app:** Google Sign-In works; "I've Crossed This" appears on detail pages and saves to Supabase; crossing count increments on repeat taps; My Bridges shows logged bridges with the Google avatar/name. (Shipping gotcha logged for future phases: the `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` env vars must be set **for Production with the `VITE_` prefix** and a **fresh build** run — Vite inlines them at build time, and a missing key would otherwise have white-screened the app; `supabase.ts` now degrades gracefully instead.)
+
 The earlier localStorage-only POC was reversed mid-session: a per-device log loses her whole collection if she gets a new phone, clears Safari, or switches devices — unacceptable for a gift meant to last. The log goes to a real backend now. **Auth + Supabase + `bridge_cache` + `user_logs` + RLS are all in this phase.**
 - **Auth — Google Sign-In only (Supabase OAuth).** Chosen over Apple Sign-In (requires a paid Apple Developer account + app registration we don't have yet) and over email/password (Google is a frictionless one-tap first experience). One "Continue with Google" button; session persists until explicit sign-out. Search + bridge detail stay fully browsable **without** an account; only logging a crossing requires sign-in.
 - **Deliverable:**
@@ -180,6 +182,16 @@ The earlier localStorage-only POC was reversed mid-session: a per-device log los
 - **Navigation:** bottom tab bar (Search · My Bridges · Stats) — no router; state-driven, matching the existing detail-overlay pattern.
 - **Done when:** She signs in with Google, taps "I've Crossed This" on a bridge, sees it in My Bridges with the right dates/count, and Stats reflects it — and it all survives a fresh device/login.
 - **Deliberately NOT in this phase (deferred):** "Seen" status; a **notes-entry UI** (the `notes` column exists and is displayed, but input lands in Phase 4 polish); editing/deleting logs; a social layer (comments, likes, a feed among her + coworkers).
+
+### Phase 2.5 — UI & navigation polish (2026-05-31, session 4) — NO new features
+A small, contained polish pass on top of Phase 2. No new features, no new data.
+- **CHANGE 1 — Persistent sign-in / avatar on the search home.** A control in the **top-right of the Search (home) screen**, visible immediately on app open:
+  - **Logged out:** a subtle **"Sign in"** button → opens the existing auth overlay (`openAuthPrompt`). This is *in addition to* the sign-in prompt that already fires on "I've Crossed This" — both entry points work.
+  - **Logged in:** her **Google avatar** as a small circle (initial-letter fallback if no photo) → navigates to the **My Bridges** tab.
+  - No login popup on app open; no forced login; Search + detail stay fully browsable without an account.
+- **CHANGE 2 — Search bottom-tab always returns to a clean home.** Tapping the **Search tab** in the bottom bar from anywhere (including from inside a bridge detail page) always lands on the **default search home** (empty search box, filters cleared, no open detail, the curated NY list). Implemented by remounting the search screen on tab-tap. The **top-left "‹ Search" back button is unchanged** — it still closes the detail and preserves prior results; the reset behavior is on the **bottom tab bar only**.
+- **Tab naming:** the personal tab stays labeled **"My Bridges"** for now (a dedicated profile page is Phase 4, §9.5); the avatar just points there.
+- **Done when:** sign-in/avatar shows top-right on the home screen and behaves per state; tapping the Search tab from a detail page returns to the clean home.
 
 ### Phase 3 — Map + stats
 - **Deliverable:** Leaflet map showing all logged bridges as pins, colored by the 9 structure-type palette. Stats screen with total crossed + breakdown by type.
@@ -207,9 +219,14 @@ The earlier localStorage-only POC was reversed mid-session: a per-device log los
 - **Done when:** She can see a load rating on a US bridge she logs.
 
 ### Phase 7 — V3: community
-- **Deliverable:** Shareable public profiles, comments on individual bridges, follow friends, leaderboards. Optional contributions back to OSM.
+- **Deliverable:** Shareable public profiles, comments on individual bridges, follow friends, leaderboards. Optional contributions back to OSM. Introduces the **Buddies tab** (below).
 - **Why this phase:** Specifically requested in §5 — shared profiles and commenting with other bridge engineers.
 - **Done when:** Two engineers she knows can see each other's profiles and comment on a bridge.
+
+**BUDDIES TAB (V3) — spec'd 2026-05-31, DO NOT BUILD until V3.** A **fourth tab** in the bottom bar (joining Search · My Bridges · Stats) for social connections. Two views toggled *within the same tab*:
+- **View 1 — Following feed:** a list of everyone you follow, showing their recent bridge activity. Tap a person → their full bridge collection + profile.
+- **View 2 — My QR code:** a screen showing your unique QR code + username for others to scan and follow you instantly. **Modeled on the Venmo QR flow** — show your phone, your friend scans, they're following you. No typing usernames. Especially useful at job sites, conferences, and in the field where typing is inconvenient.
+- **Rationale:** bridge engineers will share this app with colleagues immediately; the QR flow removes all friction from connecting. (Builds on the display-name + avatar already captured in Phase 2 / §9.5.)
 
 ---
 

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { Bridge } from '../lib/bridge'
+import { useAuth } from '../lib/auth'
 import { parseYear } from '../lib/overpass'
 import { searchAndEnrich } from '../lib/bridgeLookup'
 import { searchBridgesByPerson, type PersonRole } from '../lib/wikidataDiscovery'
@@ -49,7 +50,54 @@ function BridgeCard({ bridge, onSelect }: { bridge: Bridge; onSelect: (b: Bridge
   )
 }
 
-export function SearchScreen() {
+// Top-right auth control on the search home (Phase 2.5 #1). Logged out → a subtle
+// "Sign in" button opening the existing auth overlay. Logged in → her Google
+// avatar (initial-letter fallback) tapping through to the My Bridges tab. This is
+// an additional sign-in entry point; the "I've Crossed This" prompt still works.
+function HomeAuthControl({ onGoToProfile }: { onGoToProfile: () => void }) {
+  const { user, openAuthPrompt } = useAuth()
+
+  if (!user) {
+    return (
+      <button
+        type="button"
+        onClick={openAuthPrompt}
+        className="shrink-0 text-sm font-medium text-blue-700"
+      >
+        Sign in
+      </button>
+    )
+  }
+
+  const meta = user.user_metadata ?? {}
+  const displayName: string =
+    meta.display_name || meta.full_name || meta.name || user.email || 'You'
+  const avatarUrl: string | undefined = meta.avatar_url || meta.picture
+
+  return (
+    <button
+      type="button"
+      onClick={onGoToProfile}
+      aria-label="Open My Bridges"
+      className="shrink-0"
+    >
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="h-9 w-9 rounded-full object-cover"
+        />
+      ) : (
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
+          {displayName.charAt(0).toUpperCase()}
+        </span>
+      )}
+    </button>
+  )
+}
+
+export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
   const [query, setQuery] = useState('')
   // Default home view = the curated New York list (instant, bundled).
   const [status, setStatus] = useState<Status>('done')
@@ -151,9 +199,12 @@ export function SearchScreen() {
 
   return (
     <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-6 pb-28">
-      <header className="mb-4">
-        <p className="text-xs uppercase tracking-widest text-slate-500">Bridge Buddy</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Find a bridge</h1>
+      <header className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-widest text-slate-500">Bridge Buddy</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Find a bridge</h1>
+        </div>
+        <HomeAuthControl onGoToProfile={onGoToProfile} />
       </header>
 
       <form onSubmit={onSubmit} className="flex gap-2">
