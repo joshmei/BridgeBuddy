@@ -1,13 +1,13 @@
 # Bridge Buddy — Product Brief
 > Living document. Update this as decisions are made. Last updated: 2026-05-31 (session 4).
 > **Working name:** Bridge Buddy (placeholder — real name still TBD, see §10/§11).
-> **Latest change (2026-05-31, session 4):** **Phases 2 AND 2.5 COMPLETE & verified live.** Phase 2: Google Sign-In, "I've Crossed This" saving to Supabase, crossing-count increment on re-tap, and My Bridges — all confirmed end-to-end on the deployed app (after a Vercel env-var fix — the `VITE_`-prefixed vars must be set for Production and a fresh build run). Phase 2.5 (polish, no new features): persistent top-right sign-in/avatar on the search home, and the Search bottom-tab always returning to a clean home — confirmed on device. **Next: Phase 3 — Map + stats.** See §5.5 Phase 2 + 2.5.
+> **Latest change (2026-05-31, session 4):** **Phases 2 + 2.5 COMPLETE & verified live; Phase 2.6 (Welcome screen) built.** Phase 2: Google Sign-In + Supabase logging + My Bridges, confirmed end-to-end (after a Vercel env-var fix — `VITE_`-prefixed vars must be set for Production + fresh build). Phase 2.5: home top-right sign-in/avatar + Search-tab reset. **Phase 2.6: a bright Welcome / front-door screen** ("Log in with Google" or "Skip for now"), shown on every open while logged out; ships with an animated "shimmering water" CSS fallback and a hero-video slot at `/welcome.mp4` (**user to supply the video file** — see §5.5 Phase 2.6). **Next: Phase 3 — Map + stats.**
 
 ---
 
 ## Current status — 2026-05-31 (session 4)
 
-**Active phase:** none active — between phases. **Phases 0, 1, 1.5, 2, and 2.5 are closed** (all live + deployed + verified). Phase 2 (Google auth + Supabase logging + My Bridges + Stats) and Phase 2.5 (home sign-in/avatar + Search-tab reset) are both **verified working end-to-end on the live app**. **Next up: Phase 3 — Map + stats** (Leaflet multi-pin map of logged bridges; resolve open decision #2, full map library).
+**Active phase:** Phase 2.6 — Welcome screen (built; awaiting the hero video asset from the user). **Phases 0, 1, 1.5, 2, and 2.5 are closed** (all live + deployed + verified). Phase 2.6 ships now with the animated CSS-water fallback; it's fully functional without the video. **Next up: Phase 3 — Map + stats** (Leaflet multi-pin map of logged bridges; resolve open decision #2, full map library).
 
 ### Done
 
@@ -192,6 +192,15 @@ A small, contained polish pass on top of Phase 2. No new features, no new data. 
 - **CHANGE 2 — Search bottom-tab always returns to a clean home.** Tapping the **Search tab** in the bottom bar from anywhere (including from inside a bridge detail page) always lands on the **default search home** (empty search box, filters cleared, no open detail, the curated NY list). Implemented by remounting the search screen on tab-tap. The **top-left "‹ Search" back button is unchanged** — it still closes the detail and preserves prior results; the reset behavior is on the **bottom tab bar only**.
 - **Tab naming:** the personal tab stays labeled **"My Bridges"** for now (a dedicated profile page is Phase 4, §9.5); the avatar just points there.
 - **Done when:** sign-in/avatar shows top-right on the home screen and behaves per state; tapping the Search tab from a detail page returns to the clean home.
+
+### Phase 2.6 — Welcome screen (2026-05-31, session 4) — front door
+A bright, warm landing screen shown before the app — the "welcome to the app" moment.
+- **Deliverable:** A full-screen welcome with a hero visual (bridge + shimmering water), the app name, a short tagline, and two actions: **Log in with Google** and **Skip for now**.
+- **Behavior:** Shown on **every open while logged out**; "Skip for now" dismisses it **per session** (in-memory — returns on reload). **Logged-in users never see it.** Skip honors the standing rule that browsing never requires an account (§5.5 Phase 2) — it's a front door, not a wall.
+- **Hero visual (decided 2026-05-31):** a muted, looping, inline `<video>` at `/welcome.mp4` (drop the file in `app/public/`; an optional `/welcome.webm` is also wired). The file is **referenced by URL, not imported**, so a missing/loading/failed video can't break the build — an animated CSS "shimmering water" gradient (`.welcome-water` in `index.css`) shows behind/instead and reads as intentional. **User is supplying the video** (recommend a short muted MP4/WebM loop, not a multi-MB GIF — lighter + autoplays inline on iOS Safari).
+- **Tone:** bright and warm but tasteful, not cutesy (§10).
+- **Files:** `app/src/components/WelcomeScreen.tsx`, gate in `app/src/App.tsx`, keyframes in `app/src/index.css`.
+- **Done when:** Logged out, the welcome shows on open with both buttons working (Log in → Google; Skip → into the app); logged in, it's bypassed. ✅ built; visual finalizes when the video lands.
 
 ### Phase 3 — Map + stats
 - **Deliverable:** Leaflet map showing all logged bridges as pins, colored by the 9 structure-type palette. Stats screen with total crossed + breakdown by type.
