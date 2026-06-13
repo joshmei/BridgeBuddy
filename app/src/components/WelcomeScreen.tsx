@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../lib/auth'
 
 // Welcome / front-door screen (Phase 2.6). Bright, warm landing shown on every
@@ -15,6 +15,23 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showVideo, setShowVideo] = useState(true)
+  const [playing, setPlaying] = useState(false) // true once it actually plays
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  // Mobile browsers (Chrome/Safari) only allow autoplay when the element is
+  // genuinely muted + inline. React doesn't reliably set the `muted` attribute on
+  // the DOM node, so we set it imperatively and kick off play() ourselves. If the
+  // browser still blocks it, the video simply stays hidden (opacity-0) and the
+  // animated water gradient shows — never a dead, uncoverable play button.
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v) return
+    v.muted = true
+    v.playsInline = true
+    v.play().catch(() => {
+      /* autoplay blocked — gradient remains, no play button shown */
+    })
+  }, [])
 
   async function onLogin() {
     setBusy(true)
@@ -35,17 +52,20 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
       {/* Hero video (optional asset at /welcome.mp4). Hidden if it errors out. */}
       {showVideo ? (
         <video
-          className="absolute inset-0 h-full w-full object-cover"
+          ref={videoRef}
+          className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+            playing ? 'opacity-100' : 'opacity-0'
+          }`}
           autoPlay
           muted
           loop
           playsInline
           preload="auto"
+          onPlaying={() => setPlaying(true)}
           onError={() => setShowVideo(false)}
           aria-hidden
         >
           <source src="/welcome.mp4" type="video/mp4" />
-          <source src="/welcome.webm" type="video/webm" />
         </video>
       ) : null}
 
