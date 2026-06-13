@@ -5,10 +5,10 @@ import { useAuth } from '../lib/auth'
 // open while logged out (skip is per-session). Two paths: log in with Google, or
 // skip straight into the app — browsing never requires an account.
 //
-// Hero visual: a muted, looping, inline video at /welcome.mp4 (drop the file in
-// app/public/). It is NOT imported, so a missing file can't break the build —
-// when absent or still loading, the animated "shimmering water" gradient
-// (.welcome-water) shows on its own and reads as intentional.
+// Hero visual: a muted, looping, inline video at /welcome.mp4 with its own first
+// frame as the poster (/video-poster.jpg) so there's no flash before playback.
+// Neither is imported, so a missing file can't break the build — if the video
+// errors the animated "shimmering water" gradient (.welcome-water) shows instead.
 
 export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
   const { signInWithGoogle } = useAuth()
@@ -23,8 +23,8 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
   // doesn't reliably set the `muted` attribute on the DOM node. So: set muted
   // imperatively and attempt play both on mount AND once the media can play
   // (onCanPlay/onLoadedData). If the browser still blocks it (e.g. iOS Low Power
-  // Mode, which only a tap can override), the video stays hidden and the animated
-  // water gradient shows — and a tap anywhere on the screen starts it.
+  // Mode, which only a tap can override), the poster holds on the first frame and
+  // a tap anywhere on the screen starts playback.
   function startVideo() {
     const v = videoRef.current
     if (!v) return
@@ -59,13 +59,17 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
       {/* Animated water fallback — always present behind the video. */}
       <div className="welcome-water absolute inset-0" aria-hidden />
 
-      {/* Hero video (optional asset at /welcome.mp4). Hidden if it errors out. */}
+      {/* Hero video (asset at /welcome.mp4). The poster is the video's own first
+          frame (/video-poster.jpg), shown instantly so there's no gradient/blank
+          flash before playback — and it's the loop point, so it's seamless. The
+          element is visible immediately; if autoplay is blocked the poster simply
+          holds on frame 1 (a still of the bridge), and a tap starts playback.
+          Hidden only if the video itself errors out → gradient fallback. */}
       {showVideo ? (
         <video
           ref={videoRef}
-          className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
-            playing ? 'opacity-100' : 'opacity-0'
-          }`}
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+          poster="/video-poster.jpg"
           autoPlay
           muted
           loop
@@ -95,7 +99,7 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
 
         <div className="space-y-3">
           <h1 className="text-4xl font-bold leading-tight tracking-tight text-white drop-shadow">
-            Every bridge you cross, worth keeping.
+            Exploring the World, One Bridge at a time.
           </h1>
           <p className="text-base text-white/90 drop-shadow">
             Search any named bridge, see how it's built, and start your own collection.
