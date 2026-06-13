@@ -18,19 +18,24 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
   const [playing, setPlaying] = useState(false) // true once it actually plays
   const videoRef = useRef<HTMLVideoElement>(null)
 
-  // Mobile browsers (Chrome/Safari) only allow autoplay when the element is
-  // genuinely muted + inline. React doesn't reliably set the `muted` attribute on
-  // the DOM node, so we set it imperatively and kick off play() ourselves. If the
-  // browser still blocks it, the video simply stays hidden (opacity-0) and the
-  // animated water gradient shows — never a dead, uncoverable play button.
-  useEffect(() => {
+  // Mobile browsers (esp. iOS) only autoplay a genuinely muted + inline video,
+  // and reject .play() if it's called before the media is ready. React also
+  // doesn't reliably set the `muted` attribute on the DOM node. So: set muted
+  // imperatively and attempt play both on mount AND once the media can play
+  // (onCanPlay/onLoadedData). If the browser still blocks it (e.g. iOS Low Power
+  // Mode, which only a tap can override), the video stays hidden and the animated
+  // water gradient shows — and a tap anywhere on the screen starts it.
+  function startVideo() {
     const v = videoRef.current
     if (!v) return
     v.muted = true
     v.playsInline = true
-    v.play().catch(() => {
-      /* autoplay blocked — gradient remains, no play button shown */
-    })
+    const p = v.play()
+    if (p) p.catch(() => {})
+  }
+
+  useEffect(() => {
+    startVideo()
   }, [])
 
   async function onLogin() {
@@ -45,7 +50,12 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
   }
 
   return (
-    <main className="relative min-h-svh w-full overflow-hidden">
+    <main
+      className="relative min-h-svh w-full overflow-hidden"
+      onClick={() => {
+        if (!playing) startVideo() // tap-to-start fallback (covers Low Power Mode)
+      }}
+    >
       {/* Animated water fallback — always present behind the video. */}
       <div className="welcome-water absolute inset-0" aria-hidden />
 
@@ -61,6 +71,8 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
           loop
           playsInline
           preload="auto"
+          onLoadedData={startVideo}
+          onCanPlay={startVideo}
           onPlaying={() => setPlaying(true)}
           onError={() => setShowVideo(false)}
           aria-hidden
