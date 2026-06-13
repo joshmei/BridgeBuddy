@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Source video masters — transcode to public/welcome.mp4, do not commit
+*.mov
