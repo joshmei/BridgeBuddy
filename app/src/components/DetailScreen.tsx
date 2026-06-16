@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react'
 import type { Bridge } from '../lib/bridge'
 import { parseYear } from '../lib/overpass'
 import { useAuth } from '../lib/auth'
-import { getLogForBridge, recordCrossing, formatLogDate, type CrossingLog } from '../lib/logs'
+import {
+  getLogForBridge,
+  recordCrossing,
+  deleteCrossing,
+  formatLogDate,
+  type CrossingLog,
+} from '../lib/logs'
 import { StructureBadge } from './StructureBadge'
 
 function formatLength(meters: number): string {
@@ -38,10 +44,11 @@ function MapPin({ lat, lng }: { lat: number; lng: number }) {
   )
 }
 
-// "I've Crossed This" — the primary action of the app (PART 4). Browsing is
-// open to everyone; logging requires an account, so a tap while logged out opens
-// the auth screen. Logged in: first tap creates the log (count 1, first = last =
-// today); each later tap bumps last_crossing and increments the count.
+// "I've Crossed This" — the primary action of the app. Browsing is open to
+// everyone; logging requires an account, so a tap while logged out opens the
+// auth screen. Logged in: tapping creates the log. Once crossed, the button is
+// replaced by a "Crossed! ✓" label plus a small "Undo" button that deletes the
+// log (no confirmation) and restores the original button.
 function CrossedButton({ bridge }: { bridge: Bridge }) {
   const { user, openAuthPrompt } = useAuth()
   const [log, setLog] = useState<CrossingLog | null>(null)
@@ -86,31 +93,55 @@ function CrossedButton({ bridge }: { bridge: Bridge }) {
     }
   }
 
-  const crossed = log != null
+  // Undo — delete the log immediately (no confirmation) and restore the button.
+  async function onUndo() {
+    if (!user || !log) return
+    setBusy(true)
+    setError(null)
+    try {
+      await deleteCrossing(user.id, log.id)
+      setLog(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not undo. Try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Crossed state: "Crossed! ✓" as plain text on the page, with a smaller,
+  // muted-rose Undo button beneath it.
+  if (log) {
+    return (
+      <section className="space-y-2">
+        <p className="text-xl font-semibold text-emerald-700">Crossed! ✓</p>
+        <p className="text-xs text-slate-500">
+          First recorded: {formatLogDate(log.firstRecordedCrossing)}
+        </p>
+        <button
+          type="button"
+          onClick={onUndo}
+          disabled={busy}
+          style={{ backgroundColor: '#C9847A' }}
+          className="rounded-lg px-4 py-2 text-sm font-medium text-white active:opacity-80 disabled:opacity-60"
+        >
+          {busy ? 'Undoing…' : 'Undo'}
+        </button>
+        {error ? <p className="text-xs text-red-700">{error}</p> : null}
+      </section>
+    )
+  }
+
+  // Not yet crossed: the full-width primary button.
   return (
     <section className="space-y-1.5">
       <button
         type="button"
         onClick={onTap}
         disabled={busy}
-        className={`w-full rounded-xl px-4 py-3 text-base font-semibold disabled:opacity-60 ${
-          crossed
-            ? 'border border-emerald-300 bg-emerald-50 text-emerald-800'
-            : 'bg-slate-900 text-white active:bg-slate-700'
-        }`}
+        className="w-full rounded-xl bg-slate-900 px-4 py-3 text-base font-semibold text-white active:bg-slate-700 disabled:opacity-60"
       >
-        {busy ? 'Saving…' : crossed ? 'Crossed ✓' : "I've Crossed This"}
+        {busy ? 'Saving…' : "I've Crossed This"}
       </button>
-      {crossed && log ? (
-        <div className="text-xs text-slate-500">
-          <p>First recorded: {formatLogDate(log.firstRecordedCrossing)}</p>
-          {log.crossingCount > 1 ? (
-            <p>
-              Crossed {log.crossingCount} times · Last: {formatLogDate(log.lastCrossing)}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
       {error ? <p className="text-xs text-red-700">{error}</p> : null}
     </section>
   )

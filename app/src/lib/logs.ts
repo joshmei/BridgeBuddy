@@ -230,6 +230,18 @@ export async function recordCrossing(userId: string, bridge: Bridge): Promise<Cr
   return rowToLog(data as unknown as UserLogRow)
 }
 
+// Delete a crossing log (the "Undo" action). RLS restricts deletes to the
+// owner; we pass user_id too as defense in depth. Requires the delete policy
+// from supabase/migrations/0003_user_logs_delete.sql.
+export async function deleteCrossing(userId: string, logId: string): Promise<void> {
+  const { error } = await supabase
+    .from('user_logs')
+    .delete()
+    .eq('id', logId)
+    .eq('user_id', userId)
+  if (error) throw error
+}
+
 // --- My Bridges --------------------------------------------------------------
 
 // All of the user's logged bridges, most recently crossed first.
