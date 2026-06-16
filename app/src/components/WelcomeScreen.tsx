@@ -71,7 +71,10 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
 
   return (
     <main
-      className="relative min-h-svh w-full overflow-hidden bg-[#0f1e35]"
+      // 100dvh (not svh): on iOS standalone, svh stops short of the home-indicator
+      // safe area, leaving a navy gap below the video. dvh + viewport-fit=cover
+      // fills edge to edge.
+      className="relative min-h-[100dvh] w-full overflow-hidden bg-[#0f1e35]"
       onClick={() => {
         if (!playing) startVideo() // tap-to-start fallback (covers Low Power Mode)
       }}
@@ -112,8 +115,9 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
         aria-hidden
       />
 
-      {/* Content */}
-      <div className="relative flex min-h-svh w-full max-w-md mx-auto flex-col justify-between px-6 py-10">
+      {/* Content. Bottom padding includes the safe-area inset so the buttons sit
+          above the home indicator while the video still fills behind them. */}
+      <div className="relative flex min-h-[100dvh] w-full max-w-md mx-auto flex-col justify-between px-6 pt-10 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
         <header className="pt-6">
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/80">Bridge Buddy</p>
         </header>
