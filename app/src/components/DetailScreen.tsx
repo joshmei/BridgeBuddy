@@ -5,7 +5,7 @@ import { useAuth } from '../lib/auth'
 import {
   getLogForBridge,
   recordCrossing,
-  deleteCrossing,
+  undoCrossing,
   formatLogDate,
   type CrossingLog,
 } from '../lib/logs'
@@ -93,14 +93,14 @@ function CrossedButton({ bridge }: { bridge: Bridge }) {
     }
   }
 
-  // Undo — delete the log immediately (no confirmation) and restore the button.
+  // Undo (no confirmation) — soft-deletes the log (or decrements if it had
+  // multiple crossings). Returns null when removed → restores the button.
   async function onUndo() {
     if (!user || !log) return
     setBusy(true)
     setError(null)
     try {
-      await deleteCrossing(user.id, log.id)
-      setLog(null)
+      setLog(await undoCrossing(user.id, log.id))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not undo. Try again.')
     } finally {

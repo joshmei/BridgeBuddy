@@ -184,30 +184,44 @@ export async function getLogForBridge(
     .select(`${LOG_SELECT}, bridge_cache!inner(bridge_key)`)
     .eq('user_id', userId)
     .eq('bridge_cache.bridge_key', bridge.id)
+    .eq('is_deleted', false)
     .maybeSingle()
   if (error) throw error
   return data ? rowToLog(data as unknown as UserLogRow) : null
 }
 
-// Record a crossing. First time → insert (count 1, first = last = today). Repeat
-// → bump last_crossing to today and increment crossing_count. Read-then-write is
-// safe here: a single user, no concurrent writes.
+// Record a crossing. There's at most one row per (user, bridge) — UNIQUE — so:
+//   * no row        → insert a fresh log (count 1, first = last = today)
+//   * soft-deleted  → revive as a FRESH log (is_deleted=false, count=1, dates today)
+//   * active        → bump last_crossing + increment crossing_count
+// Read-then-write is safe here: a single user, no concurrent writes.
 export async function recordCrossing(userId: string, bridge: Bridge): Promise<CrossingLog> {
   const bridgeId = await ensureCached(bridge)
   const today = todayISO()
 
   const existing = await supabase
     .from('user_logs')
-    .select('id, crossing_count')
+    .select('id, crossing_count, is_deleted')
     .eq('user_id', userId)
     .eq('bridge_id', bridgeId)
     .maybeSingle()
   if (existing.error) throw existing.error
 
   if (existing.data) {
+    const update = existing.data.is_deleted
+      ? // revive a previously-removed bridge as a fresh log
+        {
+          is_deleted: false,
+          first_recorded_crossing: today,
+          last_crossing: today,
+          crossing_count: 1,
+        }
+      : // already active → count an additional crossing
+        { last_crossing: today, crossing_count: existing.data.crossing_count + 1 }
+
     const { data, error } = await supabase
       .from('user_logs')
-      .update({ last_crossing: today, crossing_count: existing.data.crossing_count + 1 })
+      .update(update)
       .eq('id', existing.data.id)
       .select(LOG_SELECT)
       .single()
@@ -230,16 +244,38 @@ export async function recordCrossing(userId: string, bridge: Bridge): Promise<Cr
   return rowToLog(data as unknown as UserLogRow)
 }
 
-// Delete a crossing log (the "Undo" action). RLS restricts deletes to the
-// owner; we pass user_id too as defense in depth. Requires the delete policy
-// from supabase/migrations/0003_user_logs_delete.sql.
-export async function deleteCrossing(userId: string, logId: string): Promise<void> {
+// Undo (soft delete). Never hard-deletes — soft-deleted rows are preserved for a
+// future "Recently Removed"/recovery feature. If this was a single crossing
+// (count 1) → set is_deleted=true and return null (bridge removed). If there were
+// multiple crossings (count > 1) → decrement the count and keep the log.
+export async function undoCrossing(userId: string, logId: string): Promise<CrossingLog | null> {
+  const current = await supabase
+    .from('user_logs')
+    .select('crossing_count')
+    .eq('id', logId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (current.error) throw current.error
+  if (!current.data) return null
+
+  if (current.data.crossing_count > 1) {
+    const { data, error } = await supabase
+      .from('user_logs')
+      .update({ crossing_count: current.data.crossing_count - 1 })
+      .eq('id', logId)
+      .select(LOG_SELECT)
+      .single()
+    if (error) throw error
+    return rowToLog(data as unknown as UserLogRow)
+  }
+
   const { error } = await supabase
     .from('user_logs')
-    .delete()
+    .update({ is_deleted: true })
     .eq('id', logId)
     .eq('user_id', userId)
   if (error) throw error
+  return null
 }
 
 // --- My Bridges --------------------------------------------------------------
@@ -250,6 +286,7 @@ export async function getMyBridges(userId: string): Promise<LoggedBridge[]> {
     .from('user_logs')
     .select(LOG_SELECT)
     .eq('user_id', userId)
+    .eq('is_deleted', false)
     .order('last_crossing', { ascending: false })
   if (error) throw error
 
