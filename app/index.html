@@ -5,11 +5,21 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- Warm the welcome poster ASAP so it's cached before React mounts (no flash). -->
+    <link rel="preload" as="image" href="/video-poster.jpg" fetchpriority="high" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0f1e35" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Bridge Buddy" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- Brand-navy base from the very first paint, so nothing flashes white/blue
+         before the poster loads. Parsed before the CSS bundle. -->
+    <style>
+      html,
+      body {
+        background-color: #0f1e35;
+      }
+    </style>
     <title>Bridge Buddy</title>
   </head>
   <body>

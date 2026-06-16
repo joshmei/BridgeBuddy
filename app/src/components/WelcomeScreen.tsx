@@ -5,26 +5,47 @@ import { useAuth } from '../lib/auth'
 // open while logged out (skip is per-session). Two paths: log in with Google, or
 // skip straight into the app — browsing never requires an account.
 //
-// Hero visual: a muted, looping, inline video at /welcome.mp4 with its own first
-// frame as the poster (/video-poster.jpg) so there's no flash before playback.
-// Neither is imported, so a missing file can't break the build — if the video
-// errors the animated "shimmering water" gradient (.welcome-water) shows instead.
+// Loading: the page is brand-navy from first paint (index.html), and we hold the
+// welcome until the poster (the video's own first frame, /video-poster.jpg) is
+// cached — so the first thing seen is the bridge still, never a mismatched
+// background. The poster <img> is the persistent backdrop AND the video's
+// error fallback; the muted, looping, inline video plays seamlessly over it.
+
+const POSTER = '/video-poster.jpg'
 
 export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
   const { signInWithGoogle } = useAuth()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [ready, setReady] = useState(false) // poster cached (or fail-safe) → reveal
   const [showVideo, setShowVideo] = useState(true)
-  const [playing, setPlaying] = useState(false) // true once it actually plays
+  const [playing, setPlaying] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
-  // Mobile browsers (esp. iOS) only autoplay a genuinely muted + inline video,
-  // and reject .play() if it's called before the media is ready. React also
-  // doesn't reliably set the `muted` attribute on the DOM node. So: set muted
-  // imperatively and attempt play both on mount AND once the media can play
-  // (onCanPlay/onLoadedData). If the browser still blocks it (e.g. iOS Low Power
-  // Mode, which only a tap can override), the poster holds on the first frame and
-  // a tap anywhere on the screen starts playback.
+  // Gate the reveal on the poster being loaded (the <link rel=preload> in
+  // index.html usually has it cached already). Fail-safe: reveal after 2s even
+  // if it never loads, so we can't hang on the navy screen.
+  useEffect(() => {
+    let done = false
+    const reveal = () => {
+      if (!done) {
+        done = true
+        setReady(true)
+      }
+    }
+    const img = new Image()
+    img.onload = reveal
+    img.onerror = reveal
+    img.src = POSTER
+    if (img.complete) reveal() // already cached via the preload link
+    const t = setTimeout(reveal, 2000)
+    return () => clearTimeout(t)
+  }, [])
+
+  // iOS only autoplays a genuinely muted + inline video and rejects play() before
+  // the media is ready, so set muted imperatively and (re)attempt on canplay /
+  // loadeddata. If still blocked (Low Power Mode), the poster holds and a tap
+  // starts it.
   function startVideo() {
     const v = videoRef.current
     if (!v) return
@@ -33,10 +54,6 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
     const p = v.play()
     if (p) p.catch(() => {})
   }
-
-  useEffect(() => {
-    startVideo()
-  }, [])
 
   async function onLogin() {
     setBusy(true)
@@ -49,27 +66,31 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
     }
   }
 
+  // Hold on the brand-navy body (index.html) until the poster is ready.
+  if (!ready) return null
+
   return (
     <main
-      className="relative min-h-svh w-full overflow-hidden"
+      className="relative min-h-svh w-full overflow-hidden bg-[#0f1e35]"
       onClick={() => {
         if (!playing) startVideo() // tap-to-start fallback (covers Low Power Mode)
       }}
     >
-      {/* Animated water fallback — always present behind the video. */}
-      <div className="welcome-water absolute inset-0" aria-hidden />
+      {/* Poster still — persistent backdrop; shows instantly (cached) and remains
+          as the fallback if the video errors. */}
+      <img
+        src={POSTER}
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+      />
 
-      {/* Hero video (asset at /welcome.mp4). The poster is the video's own first
-          frame (/video-poster.jpg), shown instantly so there's no gradient/blank
-          flash before playback — and it's the loop point, so it's seamless. The
-          element is visible immediately; if autoplay is blocked the poster simply
-          holds on frame 1 (a still of the bridge), and a tap starts playback.
-          Hidden only if the video itself errors out → gradient fallback. */}
+      {/* Hero video — plays seamlessly over its own first frame. */}
       {showVideo ? (
         <video
           ref={videoRef}
           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-          poster="/video-poster.jpg"
+          poster={POSTER}
           autoPlay
           muted
           loop
