@@ -136,7 +136,7 @@ export function MyBridgesScreen({ active }: { active: boolean }) {
 
   if (!user) {
     return (
-      <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-6 pb-28">
+      <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">My Bridges</h1>
         <p className="mt-4 text-sm text-slate-500">
           Log in to see the bridges you've crossed. Your collection is saved to your account, so it
@@ -189,7 +189,7 @@ export function MyBridgesScreen({ active }: { active: boolean }) {
   const avatarUrl: string | undefined = meta.avatar_url || meta.picture
 
   return (
-    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-6 pb-28">
+    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
       <header className="flex items-center gap-3">
         {avatarUrl ? (
           // referrerPolicy avoids Google blocking the avatar when the referrer is sent.

@@ -196,7 +196,7 @@ export function DetailScreen({
 
   return (
     <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 pb-28">
-      <div className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 px-4 py-3 backdrop-blur">
+      <div className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur">
         <button
           type="button"
           onClick={onBack}

@@ -45,7 +45,7 @@ export function StatsScreen({ active }: { active: boolean }) {
 
   if (!user) {
     return (
-      <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-6 pb-28">
+      <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Stats</h1>
         <p className="mt-4 text-sm text-slate-500">Log in to see stats for the bridges you've crossed.</p>
         <button
@@ -60,7 +60,7 @@ export function StatsScreen({ active }: { active: boolean }) {
   }
 
   return (
-    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-6 pb-28">
+    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
       <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Stats</h1>
 
       <section className="mt-5">

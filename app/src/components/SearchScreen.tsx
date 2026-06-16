@@ -198,7 +198,7 @@ export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
   }
 
   return (
-    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-6 pb-28">
+    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
       <header className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs uppercase tracking-widest text-slate-500">Bridge Buddy</p>
