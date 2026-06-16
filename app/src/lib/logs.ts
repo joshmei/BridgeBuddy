@@ -278,6 +278,20 @@ export async function undoCrossing(userId: string, logId: string): Promise<Cross
   return null
 }
 
+// Remove a bridge from the collection (My Bridges edit mode). Always a soft
+// delete — sets is_deleted=true regardless of crossing_count (unlike
+// undoCrossing, which decrements a multi-crossing log). Row preserved for a
+// future "Recently Removed"/recovery feature. Uses the existing update RLS
+// policy, so no DELETE policy is required.
+export async function softDeleteCrossing(userId: string, logId: string): Promise<void> {
+  const { error } = await supabase
+    .from('user_logs')
+    .update({ is_deleted: true })
+    .eq('id', logId)
+    .eq('user_id', userId)
+  if (error) throw error
+}
+
 // --- My Bridges --------------------------------------------------------------
 
 // All of the user's logged bridges, most recently crossed first.
