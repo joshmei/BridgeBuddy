@@ -41,7 +41,10 @@ const TABS: Array<{ id: Tab; label: string; icon: (active: boolean) => React.Rea
 
 export function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur">
+    // Opaque bg matching the screens (slate-50): a translucent bar let the navy
+    // body tint through in the bottom safe-area zone. pb-[safe-area-inset-bottom]
+    // extends that opaque bg behind the home indicator so no navy strip shows.
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-slate-50">
       <div className="mx-auto flex w-full max-w-md items-stretch justify-around px-2 pb-[env(safe-area-inset-bottom)]">
         {TABS.map((tab) => {
           const isActive = tab.id === active
