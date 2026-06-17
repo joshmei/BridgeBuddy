@@ -42,6 +42,28 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
     return () => clearTimeout(t)
   }, [])
 
+  // iOS PWA first-paint viewport fix. 100dvh/vh can compute short until the
+  // viewport settles (the "pull down to fix" symptom). Measure the real height
+  // into --vh on mount, again after the browser settles (rAF + a short delay),
+  // and on resize/orientationchange — .welcome-fill reads calc(var(--vh)*100).
+  useEffect(() => {
+    const setVh = () => {
+      const vh = window.innerHeight * 0.01
+      document.documentElement.style.setProperty('--vh', `${vh}px`)
+    }
+    setVh()
+    const raf = requestAnimationFrame(setVh)
+    const settle = setTimeout(setVh, 300)
+    window.addEventListener('resize', setVh)
+    window.addEventListener('orientationchange', setVh)
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(settle)
+      window.removeEventListener('resize', setVh)
+      window.removeEventListener('orientationchange', setVh)
+    }
+  }, [])
+
   // iOS only autoplays a genuinely muted + inline video and rejects play() before
   // the media is ready, so set muted imperatively and (re)attempt on canplay /
   // loadeddata. If still blocked (Low Power Mode), the poster holds and a tap
@@ -71,10 +93,10 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
 
   return (
     <main
-      // 100dvh (not svh): on iOS standalone, svh stops short of the home-indicator
-      // safe area, leaving a navy gap below the video. dvh + viewport-fit=cover
-      // fills edge to edge.
-      className="relative min-h-[100dvh] w-full overflow-hidden bg-[#0f1e35]"
+      // welcome-fill (JS-measured --vh, see effect above) fills the full screen
+      // reliably on first paint in iOS PWA standalone, where 100dvh/svh compute
+      // short. viewport-fit=cover lets it reach edge to edge incl. the safe area.
+      className="welcome-fill relative w-full overflow-hidden bg-[#0f1e35]"
       onClick={() => {
         if (!playing) startVideo() // tap-to-start fallback (covers Low Power Mode)
       }}
@@ -117,7 +139,7 @@ export function WelcomeScreen({ onSkip }: { onSkip: () => void }) {
 
       {/* Content. Bottom padding includes the safe-area inset so the buttons sit
           above the home indicator while the video still fills behind them. */}
-      <div className="relative flex min-h-[100dvh] w-full max-w-md mx-auto flex-col justify-between px-6 pt-10 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
+      <div className="relative flex min-h-full w-full max-w-md mx-auto flex-col justify-between px-6 pt-10 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
         <header className="pt-6">
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/80">Bridge Buddy</p>
         </header>

@@ -1,1 +1,13 @@
 @import "tailwindcss";
+
+/* Full-screen welcome fill that survives the iOS PWA first-paint viewport quirk.
+   100dvh/100vh can compute short on first paint (a slight pull "fixes" it), so we
+   drive the height from a JS-measured --vh (set on mount, after the viewport
+   settles, and on resize/orientationchange — see WelcomeScreen). 100vh and
+   Apple's -webkit-fill-available are fallbacks; the calc(var(--vh)) wins where
+   supported because it's the value we can correct after the viewport settles. */
+.welcome-fill {
+  height: 100vh; /* fallback */
+  height: -webkit-fill-available; /* iOS fallback */
+  height: calc(var(--vh, 1vh) * 100); /* JS-corrected, authoritative */
+}
