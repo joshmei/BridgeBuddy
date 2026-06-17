@@ -1,13 +1,18 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import type { Bridge } from '../lib/bridge'
 import { useAuth } from '../lib/auth'
 import { getMyBridges, softDeleteCrossing, formatLogDate, type LoggedBridge } from '../lib/logs'
 import { StructureBadge } from './StructureBadge'
 import { DetailScreen } from './DetailScreen'
 
-// My Bridges (PART 5): every bridge she's logged, most recently crossed first.
-// Browsing is open to all, but this list is personal — logged out, it prompts
-// sign-in instead. Edit mode (Phase 2.6) lets her remove bridges (soft delete).
+// Lazy so mapbox-gl only loads when she opens My Bridges (not on app start).
+const BridgesMap = lazy(() => import('./BridgesMap').then((m) => ({ default: m.BridgesMap })))
+
+// My Bridges (PART 5): a dark map header of her logged bridges (Phase 3) above an
+// independently-scrolling list. Browsing is open to all; the list is personal, so
+// logged out it prompts sign-in. Edit mode lets her remove bridges (soft delete).
+
+const MAP_CLASS = 'h-[38dvh] w-full shrink-0'
 
 // iOS-style red remove control. Sits in a 44x44 tap target (Apple guideline).
 function MinusCircle() {
@@ -93,7 +98,13 @@ function LoggedCard({
   )
 }
 
-export function MyBridgesScreen({ active }: { active: boolean }) {
+export function MyBridgesScreen({
+  active,
+  onGoToSearch,
+}: {
+  active: boolean
+  onGoToSearch: () => void
+}) {
   const { user, signOut, openAuthPrompt } = useAuth()
   const [items, setItems] = useState<LoggedBridge[]>([])
   const [status, setStatus] = useState<'idle' | 'loading' | 'error' | 'done'>('idle')
@@ -134,25 +145,6 @@ export function MyBridgesScreen({ active }: { active: boolean }) {
     )
   }
 
-  if (!user) {
-    return (
-      <main className="mx-auto min-h-svh w-full max-w-md bg-page px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">My Bridges</h1>
-        <p className="mt-4 text-sm text-muted">
-          Log in to see the bridges you've crossed. Your collection is saved to your account, so it
-          follows you to any device.
-        </p>
-        <button
-          type="button"
-          onClick={openAuthPrompt}
-          className="mt-4 rounded-lg bg-accent px-4 py-2.5 text-base font-medium text-white"
-        >
-          Log in or sign up
-        </button>
-      </main>
-    )
-  }
-
   async function onSignOut() {
     if (!window.confirm('Sign out of Bridge Buddy?')) return
     await signOut()
@@ -180,19 +172,17 @@ export function MyBridgesScreen({ active }: { active: boolean }) {
     }, 300)
   }
 
-  // Identity comes straight from Supabase auth metadata, auto-populated by Google
-  // on sign-in (§9.5) — no public.users table, nothing to write. A custom
-  // display_name (Phase 4) would override the Google name here when present.
-  const meta = user.user_metadata ?? {}
+  // Identity from Supabase auth metadata (Google-populated, §9.5).
+  const meta = user?.user_metadata ?? {}
   const displayName: string =
-    meta.display_name || meta.full_name || meta.name || user.email || 'You'
+    meta.display_name || meta.full_name || meta.name || user?.email || 'You'
   const avatarUrl: string | undefined = meta.avatar_url || meta.picture
 
   return (
-    <main className="mx-auto min-h-svh w-full max-w-md bg-page px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
-      <header className="flex items-center gap-3">
-        {avatarUrl ? (
-          // referrerPolicy avoids Google blocking the avatar when the referrer is sent.
+    <main className="mx-auto flex h-[100dvh] w-full max-w-md flex-col bg-page">
+      {/* Header — unchanged in spirit: title (+ identity/controls when logged in). */}
+      <header className="flex shrink-0 items-center gap-3 px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-3">
+        {user && avatarUrl ? (
           <img
             src={avatarUrl}
             alt=""
@@ -201,37 +191,63 @@ export function MyBridgesScreen({ active }: { active: boolean }) {
           />
         ) : null}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm text-muted">{displayName}</p>
+          {user ? <p className="truncate text-sm text-muted">{displayName}</p> : null}
           <h1 className="text-2xl font-semibold tracking-tight text-ink">My Bridges</h1>
         </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <button
-            type="button"
-            onClick={onSignOut}
-            className="text-sm font-medium text-muted hover:text-accent"
-          >
-            Sign out
-          </button>
-          {items.length > 0 ? (
+        {user ? (
+          <div className="flex shrink-0 items-center gap-3">
             <button
               type="button"
-              onClick={() => setEditing((e) => !e)}
-              className="text-sm font-semibold text-accent"
+              onClick={onSignOut}
+              className="text-sm font-medium text-muted hover:text-accent"
             >
-              {editing ? 'Done' : 'Edit'}
+              Sign out
             </button>
-          ) : null}
-        </div>
+            {items.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setEditing((e) => !e)}
+                className="text-sm font-semibold text-accent"
+              >
+                {editing ? 'Done' : 'Edit'}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </header>
 
-      <section className="mt-5">
+      {/* Map header — full width, fixed height; mounts only when this tab is active. */}
+      {active ? (
+        <Suspense fallback={<div className={MAP_CLASS} style={{ backgroundColor: '#1a1a2e' }} />}>
+          <BridgesMap bridges={user ? items : []} onSelect={setSelected} className={MAP_CLASS} />
+        </Suspense>
+      ) : (
+        <div className={MAP_CLASS} style={{ backgroundColor: '#1a1a2e' }} />
+      )}
+
+      {/* Bridge list / state area — scrolls independently below the map. */}
+      <section className="min-h-0 flex-1 overflow-y-auto px-4 pb-28 pt-4">
         {actionError ? (
           <p className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             {actionError}
           </p>
         ) : null}
 
-        {status === 'loading' && items.length === 0 ? (
+        {!user ? (
+          <div>
+            <p className="text-sm text-muted">
+              Log in to see the bridges you've crossed. Your collection is saved to your account, so
+              it follows you to any device.
+            </p>
+            <button
+              type="button"
+              onClick={openAuthPrompt}
+              className="mt-4 rounded-lg bg-accent px-4 py-2.5 text-base font-medium text-white"
+            >
+              Log in or sign up
+            </button>
+          </div>
+        ) : status === 'loading' && items.length === 0 ? (
           <p className="text-sm text-muted">Loading your bridges…</p>
         ) : status === 'error' ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
@@ -239,10 +255,19 @@ export function MyBridgesScreen({ active }: { active: boolean }) {
             <p className="mt-1 text-red-700">{error}</p>
           </div>
         ) : items.length === 0 ? (
-          <p className="text-sm text-muted">
-            No bridges logged yet. Search for a bridge and tap "I've Crossed This" to start your
-            collection.
-          </p>
+          <div>
+            <p className="text-sm text-muted">
+              No bridges logged yet. Search for a bridge and tap "I've Crossed This" to start your
+              collection.
+            </p>
+            <button
+              type="button"
+              onClick={onGoToSearch}
+              className="mt-4 rounded-lg bg-accent px-4 py-2.5 text-base font-medium text-white"
+            >
+              Find a bridge
+            </button>
+          </div>
         ) : (
           <ul className="space-y-2.5">
             {items.map((item) => (

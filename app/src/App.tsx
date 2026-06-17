@@ -42,7 +42,7 @@ function AppShell() {
         <SearchScreen key={searchKey} onGoToProfile={() => setTab('bridges')} />
       </div>
       <div className={tab === 'bridges' ? '' : 'hidden'}>
-        <MyBridgesScreen active={tab === 'bridges'} />
+        <MyBridgesScreen active={tab === 'bridges'} onGoToSearch={() => selectTab('search')} />
       </div>
       <div className={tab === 'stats' ? '' : 'hidden'}>
         <StatsScreen active={tab === 'stats'} />
