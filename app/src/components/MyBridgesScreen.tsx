@@ -28,16 +28,16 @@ function CardBody({ item }: { item: LoggedBridge }) {
         <img src={bridge.thumbnailUrl} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
       ) : null}
       <div className="min-w-0 flex-1 space-y-1.5">
-        <h2 className="truncate text-base font-semibold text-slate-900">{bridge.name}</h2>
+        <h2 className="truncate text-base font-semibold text-ink">{bridge.name}</h2>
         <StructureBadge structures={bridge.structures} />
-        <div className="space-y-0.5 text-xs text-slate-500">
+        <div className="space-y-0.5 text-xs text-muted">
           <p>First recorded: {formatLogDate(log.firstRecordedCrossing)}</p>
           {showLast ? <p>Last crossing: {formatLogDate(log.lastCrossing)}</p> : null}
           {log.crossingCount > 1 ? (
-            <p className="font-medium text-slate-600">Crossed {log.crossingCount} times</p>
+            <p className="font-medium text-muted">Crossed {log.crossingCount} times</p>
           ) : null}
         </div>
-        {log.notes ? <p className="text-xs italic text-slate-600">{log.notes}</p> : null}
+        {log.notes ? <p className="text-xs italic text-muted">{log.notes}</p> : null}
       </div>
     </>
   )
@@ -68,7 +68,7 @@ function LoggedCard({
         // Non-tappable in edit mode — only the minus circle is interactive, so a
         // stray tap can't navigate into the detail page.
         <div className="flex items-center gap-2">
-          <div className="flex flex-1 gap-3 rounded-xl border border-slate-200 bg-white p-3">
+          <div className="flex flex-1 gap-3 rounded-xl border border-divider bg-surface p-3">
             <CardBody item={item} />
           </div>
           <button
@@ -84,7 +84,7 @@ function LoggedCard({
         <button
           type="button"
           onClick={() => onSelect(item.bridge)}
-          className="flex w-full gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left active:bg-slate-100"
+          className="flex w-full gap-3 rounded-xl border border-divider bg-surface p-3 text-left active:bg-divider"
         >
           <CardBody item={item} />
         </button>
@@ -136,16 +136,16 @@ export function MyBridgesScreen({ active }: { active: boolean }) {
 
   if (!user) {
     return (
-      <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">My Bridges</h1>
-        <p className="mt-4 text-sm text-slate-500">
+      <main className="mx-auto min-h-svh w-full max-w-md bg-page px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">My Bridges</h1>
+        <p className="mt-4 text-sm text-muted">
           Log in to see the bridges you've crossed. Your collection is saved to your account, so it
           follows you to any device.
         </p>
         <button
           type="button"
           onClick={openAuthPrompt}
-          className="mt-4 rounded-lg bg-slate-900 px-4 py-2.5 text-base font-medium text-white"
+          className="mt-4 rounded-lg bg-accent px-4 py-2.5 text-base font-medium text-white"
         >
           Log in or sign up
         </button>
@@ -189,7 +189,7 @@ export function MyBridgesScreen({ active }: { active: boolean }) {
   const avatarUrl: string | undefined = meta.avatar_url || meta.picture
 
   return (
-    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
+    <main className="mx-auto min-h-svh w-full max-w-md bg-page px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
       <header className="flex items-center gap-3">
         {avatarUrl ? (
           // referrerPolicy avoids Google blocking the avatar when the referrer is sent.
@@ -201,14 +201,14 @@ export function MyBridgesScreen({ active }: { active: boolean }) {
           />
         ) : null}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm text-slate-500">{displayName}</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">My Bridges</h1>
+          <p className="truncate text-sm text-muted">{displayName}</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">My Bridges</h1>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <button
             type="button"
             onClick={onSignOut}
-            className="text-sm font-medium text-slate-500 hover:text-slate-900"
+            className="text-sm font-medium text-muted hover:text-accent"
           >
             Sign out
           </button>
@@ -216,7 +216,7 @@ export function MyBridgesScreen({ active }: { active: boolean }) {
             <button
               type="button"
               onClick={() => setEditing((e) => !e)}
-              className="text-sm font-semibold text-blue-700"
+              className="text-sm font-semibold text-accent"
             >
               {editing ? 'Done' : 'Edit'}
             </button>
@@ -232,14 +232,14 @@ export function MyBridgesScreen({ active }: { active: boolean }) {
         ) : null}
 
         {status === 'loading' && items.length === 0 ? (
-          <p className="text-sm text-slate-500">Loading your bridges…</p>
+          <p className="text-sm text-muted">Loading your bridges…</p>
         ) : status === 'error' ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             <p className="font-medium">Could not load your bridges</p>
             <p className="mt-1 text-red-700">{error}</p>
           </div>
         ) : items.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted">
             No bridges logged yet. Search for a bridge and tap "I've Crossed This" to start your
             collection.
           </p>
@@ -266,17 +266,17 @@ export function MyBridgesScreen({ active }: { active: boolean }) {
           onClick={() => setPendingRemove(null)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+            className="w-full max-w-sm rounded-2xl bg-surface p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-base font-medium text-slate-900">
+            <p className="text-base font-medium text-ink">
               Remove {pendingRemove.bridge.name} from your collection?
             </p>
             <div className="mt-5 flex gap-3">
               <button
                 type="button"
                 onClick={() => setPendingRemove(null)}
-                className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-base font-medium text-slate-700 active:bg-slate-100"
+                className="flex-1 rounded-lg border border-divider px-4 py-2.5 text-base font-medium text-ink active:bg-surface"
               >
                 Cancel
               </button>

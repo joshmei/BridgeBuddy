@@ -22,14 +22,14 @@ export function AuthScreen({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 py-6">
+    <main className="mx-auto min-h-svh w-full max-w-md bg-page px-4 py-6">
       <div className="flex items-center justify-between">
-        <p className="text-xs uppercase tracking-widest text-slate-500">Bridge Buddy</p>
+        <p className="text-xs uppercase tracking-widest text-muted">Bridge Buddy</p>
         {onClose ? (
           <button
             type="button"
             onClick={onClose}
-            className="text-sm font-medium text-slate-600 hover:text-slate-900"
+            className="text-sm font-medium text-muted hover:text-accent"
           >
             Cancel
           </button>
@@ -37,8 +37,8 @@ export function AuthScreen({ onClose }: { onClose?: () => void }) {
       </div>
 
       <div className="mt-16 space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Sign in</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Sign in</h1>
+        <p className="text-sm text-muted">
           Your bridge log is saved to your account, so it follows you to any device.
         </p>
       </div>
@@ -47,7 +47,7 @@ export function AuthScreen({ onClose }: { onClose?: () => void }) {
         type="button"
         onClick={onGoogle}
         disabled={busy}
-        className="mt-6 flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-900 active:bg-slate-100 disabled:opacity-60"
+        className="mt-6 flex w-full items-center justify-center gap-3 rounded-lg border border-divider bg-white px-4 py-3 text-base font-medium text-ink active:bg-surface disabled:opacity-60"
       >
         <GoogleMark />
         {busy ? 'Redirecting…' : 'Continue with Google'}

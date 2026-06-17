@@ -8,8 +8,8 @@ import { STRUCTURE_TYPE_COLORS, STRUCTURE_TYPE_LABELS } from '../lib/structureTy
 
 function StatCard({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
+    <section className="rounded-xl border border-divider bg-surface p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted">{label}</p>
       <div className="mt-1">{children}</div>
     </section>
   )
@@ -45,13 +45,13 @@ export function StatsScreen({ active }: { active: boolean }) {
 
   if (!user) {
     return (
-      <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Stats</h1>
-        <p className="mt-4 text-sm text-slate-500">Log in to see stats for the bridges you've crossed.</p>
+      <main className="mx-auto min-h-svh w-full max-w-md bg-page px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Stats</h1>
+        <p className="mt-4 text-sm text-muted">Log in to see stats for the bridges you've crossed.</p>
         <button
           type="button"
           onClick={openAuthPrompt}
-          className="mt-4 rounded-lg bg-slate-900 px-4 py-2.5 text-base font-medium text-white"
+          className="mt-4 rounded-lg bg-accent px-4 py-2.5 text-base font-medium text-white"
         >
           Log in or sign up
         </button>
@@ -60,43 +60,43 @@ export function StatsScreen({ active }: { active: boolean }) {
   }
 
   return (
-    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Stats</h1>
+    <main className="mx-auto min-h-svh w-full max-w-md bg-page px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Stats</h1>
 
       <section className="mt-5">
         {status === 'loading' && !stats ? (
-          <p className="text-sm text-slate-500">Crunching your numbers…</p>
+          <p className="text-sm text-muted">Crunching your numbers…</p>
         ) : status === 'error' ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             <p className="font-medium">Could not load your stats</p>
             <p className="mt-1 text-red-700">{error}</p>
           </div>
         ) : !stats || stats.total === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted">
             No bridges logged yet. Once you start your collection, your stats appear here.
           </p>
         ) : (
           <div className="space-y-3">
             <StatCard label="Total bridges crossed">
-              <p className="text-4xl font-semibold tabular-nums text-slate-900">{stats.total}</p>
+              <p className="text-4xl font-semibold tabular-nums text-ink">{stats.total}</p>
             </StatCard>
 
             <StatCard label="By structure type">
               <ul className="space-y-1.5">
                 {stats.byStructure.map(({ type, count }) => (
                   <li key={type} className="flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-2 text-sm text-slate-700">
+                    <span className="flex items-center gap-2 text-sm text-ink">
                       <span
                         className="inline-block h-2.5 w-2.5 rounded-full"
                         style={{ backgroundColor: STRUCTURE_TYPE_COLORS[type].bg }}
                       />
                       {STRUCTURE_TYPE_LABELS[type]}
                     </span>
-                    <span className="text-sm font-semibold tabular-nums text-slate-900">{count}</span>
+                    <span className="text-sm font-semibold tabular-nums text-ink">{count}</span>
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-xs text-slate-400">
+              <p className="mt-2 text-xs text-muted">
                 Hybrid bridges count under each of their types, so these can sum to more than the
                 total.
               </p>
@@ -104,8 +104,8 @@ export function StatsScreen({ active }: { active: boolean }) {
 
             {stats.firstEver ? (
               <StatCard label="First recorded crossing">
-                <p className="text-base font-semibold text-slate-900">{stats.firstEver.bridge.name}</p>
-                <p className="text-sm text-slate-500">
+                <p className="text-base font-semibold text-ink">{stats.firstEver.bridge.name}</p>
+                <p className="text-sm text-muted">
                   {formatLogDate(stats.firstEver.log.firstRecordedCrossing)}
                 </p>
               </StatCard>
@@ -113,8 +113,8 @@ export function StatsScreen({ active }: { active: boolean }) {
 
             {stats.mostCrossed ? (
               <StatCard label="Most crossed">
-                <p className="text-base font-semibold text-slate-900">{stats.mostCrossed.bridge.name}</p>
-                <p className="text-sm text-slate-500">
+                <p className="text-base font-semibold text-ink">{stats.mostCrossed.bridge.name}</p>
+                <p className="text-sm text-muted">
                   {stats.mostCrossed.log.crossingCount === 1
                     ? 'Crossed once'
                     : `Crossed ${stats.mostCrossed.log.crossingCount} times`}

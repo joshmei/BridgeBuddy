@@ -30,13 +30,13 @@ function MapPin({ lat, lng }: { lat: number; lng: number }) {
         title="Bridge location"
         src={src}
         loading="lazy"
-        className="h-52 w-full rounded-xl border border-slate-200"
+        className="h-52 w-full rounded-xl border border-divider"
       />
       <a
         href={osmLink}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-xs text-slate-500"
+        className="text-xs text-muted"
       >
         {lat.toFixed(4)}°, {lng.toFixed(4)}° · View larger map →
       </a>
@@ -114,7 +114,7 @@ function CrossedButton({ bridge }: { bridge: Bridge }) {
     return (
       <section className="space-y-2">
         <p className="text-xl font-semibold text-emerald-700">Crossed! ✓</p>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted">
           First recorded: {formatLogDate(log.firstRecordedCrossing)}
         </p>
         <button
@@ -160,12 +160,12 @@ function Fact({
 }) {
   if (!value) return null
   return (
-    <div className="flex justify-between gap-4 border-b border-slate-100 py-2 last:border-0">
-      <dt className="shrink-0 text-sm text-slate-500">{label}</dt>
-      <dd className="text-right text-sm font-medium text-slate-900">
+    <div className="flex justify-between gap-4 border-b border-divider py-2 last:border-0">
+      <dt className="shrink-0 text-sm text-muted">{label}</dt>
+      <dd className="text-right text-sm font-medium text-ink">
         {onClick ? (
           // Link, not button (§5.6 #5): tap → results filtered to this person.
-          <button type="button" onClick={onClick} className="text-blue-700 underline underline-offset-2">
+          <button type="button" onClick={onClick} className="text-accent underline underline-offset-2">
             {value}
           </button>
         ) : (
@@ -195,12 +195,12 @@ export function DetailScreen({
   ].filter(Boolean) as string[]
 
   return (
-    <main className="mx-auto min-h-svh w-full max-w-md bg-slate-50 pb-28">
-      <div className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur">
+    <main className="mx-auto min-h-svh w-full max-w-md bg-page pb-28">
+      <div className="sticky top-0 z-10 border-b border-divider bg-page/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur">
         <button
           type="button"
           onClick={onBack}
-          className="text-sm font-medium text-slate-600 hover:text-slate-900"
+          className="text-sm font-medium text-muted hover:text-accent"
         >
           ‹ {backLabel}
         </button>
@@ -214,14 +214,14 @@ export function DetailScreen({
         <header className="space-y-2">
           {/* Structure type at the top of every detail page (CLAUDE.md). */}
           <StructureBadge structures={bridge.structures} />
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{bridge.name}</h1>
-          {bridge.region ? <p className="text-sm text-slate-500">{bridge.region}</p> : null}
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">{bridge.name}</h1>
+          {bridge.region ? <p className="text-sm text-muted">{bridge.region}</p> : null}
         </header>
 
         {/* Primary action — prominent, directly under the title (PART 4). */}
         <CrossedButton bridge={bridge} />
 
-        <dl className="rounded-xl border border-slate-200 bg-white px-4 py-1">
+        <dl className="rounded-xl border border-divider bg-surface px-4 py-1">
           <Fact label="Built" value={year ? String(year) : null} />
           <Fact label="Length" value={bridge.lengthMeters ? formatLength(bridge.lengthMeters) : null} />
           <Fact
@@ -246,20 +246,20 @@ export function DetailScreen({
 
         {bridge.summary ? (
           <section className="space-y-1">
-            <p className="text-sm leading-relaxed text-slate-700">{bridge.summary}</p>
+            <p className="text-sm leading-relaxed text-ink">{bridge.summary}</p>
             {bridge.wikipediaUrl ? (
               <a
                 href={bridge.wikipediaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block text-sm font-medium text-blue-700"
+                className="inline-block text-sm font-medium text-accent"
               >
                 Read more on Wikipedia →
               </a>
             ) : null}
           </section>
         ) : (
-          <p className="text-sm text-slate-400">No encyclopedia summary available for this bridge.</p>
+          <p className="text-sm text-muted">No encyclopedia summary available for this bridge.</p>
         )}
 
         {/* MAP PIN — dependency-free OSM embed (decided 2026-05-29). Leaflet is
@@ -267,7 +267,7 @@ export function DetailScreen({
         {bridge.coordinate ? <MapPin lat={bridge.coordinate.lat} lng={bridge.coordinate.lng} /> : null}
 
         {contributors.length > 0 ? (
-          <p className="text-xs text-slate-400">Data: {contributors.join(' · ')}</p>
+          <p className="text-xs text-muted">Data: {contributors.join(' · ')}</p>
         ) : null}
       </div>
     </main>

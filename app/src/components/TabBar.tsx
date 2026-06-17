@@ -41,10 +41,9 @@ const TABS: Array<{ id: Tab; label: string; icon: (active: boolean) => React.Rea
 
 export function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
   return (
-    // Opaque bg matching the screens (slate-50): a translucent bar let the navy
-    // body tint through in the bottom safe-area zone. pb-[safe-area-inset-bottom]
-    // extends that opaque bg behind the home indicator so no navy strip shows.
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-slate-50">
+    // Opaque white bar (per palette). pb-[safe-area-inset-bottom] extends the
+    // opaque bg behind the home indicator so no body color shows through there.
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-divider bg-white">
       <div className="mx-auto flex w-full max-w-md items-stretch justify-around px-2 pb-[env(safe-area-inset-bottom)]">
         {TABS.map((tab) => {
           const isActive = tab.id === active
@@ -55,7 +54,7 @@ export function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab)
               onClick={() => onChange(tab.id)}
               aria-current={isActive ? 'page' : undefined}
               className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
-                isActive ? 'text-slate-900' : 'text-slate-400'
+                isActive ? 'text-accent' : 'text-accent-soft'
               }`}
             >
               {tab.icon(isActive)}

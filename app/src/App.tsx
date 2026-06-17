@@ -34,7 +34,7 @@ function AppShell() {
     // Root app container: fills slate-50 to the physical bottom edge (incl. the
     // safe-area zone) so the navy body never shows through below the tab bar.
     // The welcome screen is a separate return path, so it keeps its navy bg.
-    <div className="min-h-[100dvh] bg-slate-50">
+    <div className="min-h-[100dvh] bg-page">
       {/* My Bridges / Stats stay mounted so their state survives tab switches.
           Search is intentionally remounted on tab-tap (via searchKey) so the
           bottom Search tab always lands on a clean home (Phase 2.5 #2). */}
@@ -52,7 +52,7 @@ function AppShell() {
 
       {/* App-root auth overlay: any screen can require login via openAuthPrompt(). */}
       {promptOpen ? (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-50">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-page">
           <AuthScreen onClose={closeAuthPrompt} />
         </div>
       ) : null}

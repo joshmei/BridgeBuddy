@@ -18,7 +18,7 @@ export type PersonRole = 'architect' | 'engineer'
 
 function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-900 py-1 pl-3 pr-2 text-xs font-medium text-white">
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-accent py-1 pl-3 pr-2 text-xs font-medium text-white">
       {label}
       <button
         type="button"
@@ -46,7 +46,7 @@ function Row({
       type="button"
       onClick={onClick}
       className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
-        selected ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800 active:bg-slate-200'
+        selected ? 'bg-accent text-white' : 'bg-surface text-ink active:bg-divider'
       }`}
     >
       <span>{label}</span>
@@ -69,14 +69,14 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="border-b border-slate-100 py-2">
+    <section className="border-b border-divider py-2">
       <button
         type="button"
         onClick={onToggle}
         className="flex w-full items-center justify-between py-1.5 text-left"
       >
-        <span className="text-sm font-semibold text-slate-900">{title}</span>
-        <span className="text-xs text-slate-500">
+        <span className="text-sm font-semibold text-ink">{title}</span>
+        <span className="text-xs text-muted">
           {summary} <span aria-hidden>{expanded ? '▾' : '▸'}</span>
         </span>
       </button>
@@ -154,7 +154,7 @@ export function FilterControls({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-divider bg-surface px-3 py-1 text-xs font-medium text-ink"
         >
           <span aria-hidden>⚙</span> Filters{chips.length > 0 ? ` · ${chips.length}` : ''}
         </button>
@@ -170,9 +170,9 @@ export function FilterControls({
             onClick={() => setOpen(false)}
             aria-hidden
           />
-          <div className="relative max-h-[80svh] overflow-y-auto rounded-t-2xl bg-white px-4 pb-6 pt-3">
+          <div className="relative max-h-[80svh] overflow-y-auto rounded-t-2xl bg-surface px-4 pb-6 pt-3">
             <div className="mb-1 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-slate-900">Filters</h2>
+              <h2 className="text-base font-semibold text-ink">Filters</h2>
               <button
                 type="button"
                 onClick={() =>
@@ -181,7 +181,7 @@ export function FilterControls({
                     : onChange({ country: null, state: null, structureTypes: [], architect: null, engineer: null })
                 }
                 disabled={!isFilterActive(filters)}
-                className="text-xs font-medium text-slate-500 disabled:opacity-40"
+                className="text-xs font-medium text-muted disabled:opacity-40"
               >
                 Clear all
               </button>
@@ -194,7 +194,7 @@ export function FilterControls({
               onToggle={expandCountry}
             >
               {orderedCountries.length === 0 ? (
-                <p className="text-xs text-slate-400">No country data in these results.</p>
+                <p className="text-xs text-muted">No country data in these results.</p>
               ) : (
                 orderedCountries.map((c) => (
                   <Row
@@ -286,7 +286,7 @@ export function FilterControls({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="mt-4 w-full rounded-lg bg-slate-900 py-2.5 text-sm font-medium text-white"
+              className="mt-4 w-full rounded-lg bg-accent py-2.5 text-sm font-medium text-white"
             >
               Done
             </button>

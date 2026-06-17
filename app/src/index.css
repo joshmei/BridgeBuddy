@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+/* App color palette — warm cinematic tones from the welcome video (Golden Gate
+   at sunset). Light mode only. One source of truth: change a value here and it
+   updates everywhere these tokens are used. (Structure-type badge/pin colors are
+   separate — see structureTypes.ts.) */
+@theme {
+  --color-page: #faf7f8; /* warm off-white page background */
+  --color-surface: #f5eef0; /* pale blush — cards, tiles, inputs */
+  --color-accent: #d4879a; /* warm rose — primary buttons, links, active tab */
+  --color-accent-soft: #c4a0b8; /* soft lavender — secondary buttons, inactive tab, pressed */
+  --color-ink: #1a1a2e; /* deep navy — primary text */
+  --color-muted: #8e7a88; /* steel mauve — secondary text, metadata, placeholders */
+  --color-divider: #e8d8dc; /* blush — borders, dividers */
+}
+
 /* Full-screen welcome fill that survives the iOS PWA first-paint viewport quirk.
    100dvh/100vh can compute short on first paint (a slight pull "fixes" it), so we
    drive the height from a JS-measured --vh (set on mount, after the viewport
