@@ -137,6 +137,38 @@ export function BridgesMap({
         },
         paint: { 'text-color': '#ffffff' },
       })
+      // 3D buildings (zoom 15+) so the city rises around the pins at street
+      // level. Inserted beneath the first label layer so labels stay legible;
+      // the pin circle layers were added last, so pins still draw on top.
+      const labelLayerId = map
+        .getStyle()
+        .layers?.find((l) => l.type === 'symbol' && l.layout?.['text-field'])?.id
+      map.addLayer(
+        {
+          id: '3d-buildings',
+          source: 'composite',
+          'source-layer': 'building',
+          filter: ['==', 'extrude', 'true'],
+          type: 'fill-extrusion',
+          minzoom: 15,
+          paint: {
+            'fill-extrusion-color': '#1a1a2e',
+            'fill-extrusion-height': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              15,
+              0,
+              15.05,
+              ['get', 'height'],
+            ],
+            'fill-extrusion-base': ['get', 'min_height'],
+            'fill-extrusion-opacity': 0.8,
+          },
+        },
+        labelLayerId,
+      )
+
       map.addLayer({
         id: 'points',
         type: 'circle',
@@ -148,6 +180,20 @@ export function BridgesMap({
           'circle-stroke-width': 2,
           'circle-stroke-color': '#ffffff',
         },
+      })
+
+      // Auto-tilt into 3D past zoom 15; flatten on the way back out. On zoomend
+      // (not zoom) so it never fights an in-progress pinch.
+      let tilted = false
+      map.on('zoomend', () => {
+        const z = map.getZoom()
+        if (z >= 15 && !tilted) {
+          tilted = true
+          map.easeTo({ pitch: 45, bearing: -17.6, duration: 600 })
+        } else if (z < 15 && tilted) {
+          tilted = false
+          map.easeTo({ pitch: 0, bearing: 0, duration: 600 })
+        }
       })
 
       if (fitMap(map, featuresFor(bridgesRef.current))) didFitRef.current = true
