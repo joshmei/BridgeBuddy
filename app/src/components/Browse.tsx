@@ -129,31 +129,69 @@ export function BrowseBuilderSheet({
   onClose: () => void
   onPickPerson: (role: PersonRole, value: string) => void
 }) {
+  // Both sections collapsed by default so both options are visible at a glance
+  // (each list is ~40 rows). Single-open accordion keeps the sheet compact.
+  const [open, setOpen] = useState<PersonRole | null>(null)
+  const toggle = (k: PersonRole) => setOpen((cur) => (cur === k ? null : k))
+
   return (
     <BottomSheet title="Browse by builder" onClose={onClose}>
-      <Section label="Architect">
+      <CollapsibleSection
+        label="Architect"
+        count={ARCHITECTS.length}
+        expanded={open === 'architect'}
+        onToggle={() => toggle('architect')}
+      >
         {ARCHITECTS.map((a) => (
           <ListRow key={a} onClick={() => onPickPerson('architect', a)}>
             {a}
           </ListRow>
         ))}
-      </Section>
-      <Section label="Structural engineer">
+      </CollapsibleSection>
+      <CollapsibleSection
+        label="Structural engineer"
+        count={ENGINEERS.length}
+        expanded={open === 'engineer'}
+        onToggle={() => toggle('engineer')}
+      >
         {ENGINEERS.map((e) => (
           <ListRow key={e} onClick={() => onPickPerson('engineer', e)}>
             {e}
           </ListRow>
         ))}
-      </Section>
+      </CollapsibleSection>
     </BottomSheet>
   )
 }
 
-function Section({ label, children }: { label: string; children: ReactNode }) {
+function CollapsibleSection({
+  label,
+  count,
+  expanded,
+  onToggle,
+  children,
+}: {
+  label: string
+  count: number
+  expanded: boolean
+  onToggle: () => void
+  children: ReactNode
+}) {
   return (
-    <section className="py-2">
-      <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
-      <div className="space-y-0.5">{children}</div>
+    <section className="border-b border-divider last:border-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between py-3 text-left"
+        aria-expanded={expanded}
+      >
+        <span className="text-sm font-semibold text-ink">{label}</span>
+        <span className="flex items-center gap-2 text-xs text-muted">
+          {count}
+          <span aria-hidden>{expanded ? '▾' : '▸'}</span>
+        </span>
+      </button>
+      {expanded ? <div className="space-y-0.5 pb-2">{children}</div> : null}
     </section>
   )
 }
