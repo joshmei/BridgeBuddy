@@ -4,16 +4,17 @@ import { useAuth } from '../lib/auth'
 import { parseYear } from '../lib/overpass'
 import { searchAndEnrich } from '../lib/bridgeLookup'
 import { searchBridgesByPerson, type PersonRole } from '../lib/wikidataDiscovery'
-import { applyFilters, deriveOptions, EMPTY_FILTERS, type Filters } from '../lib/filters'
-import { homeFilterOptions } from '../lib/filterMetadata'
 import defaultBridgesData from '../data/defaultBridges.json'
 import { StructureBadge } from './StructureBadge'
 import { DetailScreen } from './DetailScreen'
-import { FilterControls } from './FilterControls'
+import { BrowseLocationSheet, BrowseTypeSheet } from './Browse'
 
 // Curated prominent New York bridges, generated at build time
 // (phase-1/gen-default-bridges.ts) — the default home browse before any search.
 const DEFAULT_BRIDGES = defaultBridgesData as Bridge[]
+
+// Browse selections cap at 20 enriched results (no pagination).
+const BROWSE_LIMIT = 20
 
 type Status = 'idle' | 'loading' | 'error' | 'done'
 
@@ -52,42 +53,26 @@ function BridgeCard({ bridge, onSelect }: { bridge: Bridge; onSelect: (b: Bridge
 
 // Top-right auth control on the search home (Phase 2.5 #1). Logged out → a subtle
 // "Sign in" button opening the existing auth overlay. Logged in → her Google
-// avatar (initial-letter fallback) tapping through to the My Bridges tab. This is
-// an additional sign-in entry point; the "I've Crossed This" prompt still works.
+// avatar (initial-letter fallback) tapping through to the My Bridges tab.
 function HomeAuthControl({ onGoToProfile }: { onGoToProfile: () => void }) {
   const { user, openAuthPrompt } = useAuth()
 
   if (!user) {
     return (
-      <button
-        type="button"
-        onClick={openAuthPrompt}
-        className="shrink-0 text-sm font-medium text-accent"
-      >
+      <button type="button" onClick={openAuthPrompt} className="shrink-0 text-sm font-medium text-accent">
         Sign in
       </button>
     )
   }
 
   const meta = user.user_metadata ?? {}
-  const displayName: string =
-    meta.display_name || meta.full_name || meta.name || user.email || 'You'
+  const displayName: string = meta.display_name || meta.full_name || meta.name || user.email || 'You'
   const avatarUrl: string | undefined = meta.avatar_url || meta.picture
 
   return (
-    <button
-      type="button"
-      onClick={onGoToProfile}
-      aria-label="Open My Bridges"
-      className="shrink-0"
-    >
+    <button type="button" onClick={onGoToProfile} aria-label="Open My Bridges" className="shrink-0">
       {avatarUrl ? (
-        <img
-          src={avatarUrl}
-          alt=""
-          referrerPolicy="no-referrer"
-          className="h-9 w-9 rounded-full object-cover"
-        />
+        <img src={avatarUrl} alt="" referrerPolicy="no-referrer" className="h-9 w-9 rounded-full object-cover" />
       ) : (
         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white">
           {displayName.charAt(0).toUpperCase()}
@@ -105,43 +90,22 @@ export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
   const [isDefault, setIsDefault] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searched, setSearched] = useState('')
+  const [searchTitle, setSearchTitle] = useState<string | null>(null)
   const [selected, setSelected] = useState<Bridge | null>(null)
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
-  // True only when the active person filter came from a detail-page link (so the
-  // "No other bridges by X" empty state applies); false for discovery browsing.
-  const [linkPerson, setLinkPerson] = useState(false)
+  const [browseOpen, setBrowseOpen] = useState<'location' | 'type' | null>(null)
   const runId = useRef(0)
 
-  function backToDefault() {
-    runId.current++
-    setResults(DEFAULT_BRIDGES)
-    setIsDefault(true)
-    setStatus('done')
-    setError(null)
-    setSearched('')
-    setFilters(EMPTY_FILTERS)
-    setLinkPerson(false)
-  }
-
-  // Detail-page architect/engineer link → refine the CURRENT results to that
-  // person (§5.6 #5).
-  function filterByPerson(field: 'architect' | 'engineer', value: string) {
-    setFilters({ ...EMPTY_FILTERS, [field]: value })
-    setLinkPerson(true)
-    setSelected(null)
-  }
-
-  // Home-screen discovery: pick an architect/engineer → Wikidata bridges-by-person.
-  async function runDiscovery(role: PersonRole, value: string) {
+  // Shared runner: race-guarded, sets the loading/results/error state and the
+  // results title. `fetcher` returns the enriched bridges to show.
+  async function run(fetcher: () => Promise<Bridge[]>, searchedLabel: string, title: string | null) {
     const id = ++runId.current
     setStatus('loading')
     setError(null)
-    setSearched(value)
+    setSearched(searchedLabel)
     setIsDefault(false)
-    setLinkPerson(false)
-    setFilters({ ...filters, architect: null, engineer: null, [role]: value })
+    setSearchTitle(title)
     try {
-      const bridges = await searchBridgesByPerson(value, role)
+      const bridges = await fetcher()
       if (id !== runId.current) return
       setResults(bridges)
       setStatus('done')
@@ -150,52 +114,41 @@ export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
       setError(err instanceof Error ? err.message : 'Lookup failed')
       setStatus('error')
     }
+  }
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const name = query.trim()
+    if (!name) return
+    run(() => searchAndEnrich(name, BROWSE_LIMIT), name, null)
+  }
+
+  // Browse by location → "bridges in [place]" (name/place search via Photon).
+  function browseLocation(q: string, title: string) {
+    setBrowseOpen(null)
+    run(() => searchAndEnrich(q, BROWSE_LIMIT), title, title)
+  }
+
+  // Architect/engineer → Wikidata bridges-by-person discovery (existing logic).
+  // Used by Browse-by-type AND the detail-page architect/engineer links.
+  function runDiscovery(role: PersonRole, value: string) {
+    setBrowseOpen(null)
+    run(() => searchBridgesByPerson(value, role), value, `Bridges by ${value}`)
+  }
+
+  function onPersonFromDetail(field: 'architect' | 'engineer', value: string) {
+    setSelected(null)
+    runDiscovery(field, value)
   }
 
   if (selected) {
     return (
-      <DetailScreen bridge={selected} onBack={() => setSelected(null)} onFilterByPerson={filterByPerson} />
+      <DetailScreen bridge={selected} onBack={() => setSelected(null)} onFilterByPerson={onPersonFromDetail} />
     )
   }
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const name = query.trim()
-    if (!name) return
-    const id = ++runId.current
-    setStatus('loading')
-    setError(null)
-    setSearched(name)
-    setIsDefault(false)
-    setLinkPerson(false)
-    setFilters(EMPTY_FILTERS)
-    try {
-      const bridges = await searchAndEnrich(name)
-      if (id !== runId.current) return
-      setResults(bridges)
-      setStatus('done')
-    } catch (err) {
-      if (id !== runId.current) return
-      setError(err instanceof Error ? err.message : 'Lookup failed')
-      setStatus('error')
-    }
-  }
-
   const hasResults = status === 'done' && results.length > 0
-  const filtered = hasResults ? applyFilters(results, filters) : []
-  const personName = filters.architect ?? filters.engineer
-  const personEmpty = linkPerson && personName != null && filtered.length <= 1
-  // Options: derived from the result set only for a real search/discovery;
-  // otherwise (home default or empty) the full bundled config.
-  const browseMode = isDefault || !hasResults
-  const options = browseMode ? homeFilterOptions(filters.country) : deriveOptions(results, filters.country)
-
-  // Contextual label above the list.
-  let listLabel: string | null = null
-  if (hasResults && !personEmpty) {
-    if (isDefault) listLabel = 'Popular bridges in New York'
-    else if (personName) listLabel = `Bridges by ${personName}`
-  }
+  const listLabel = isDefault ? 'Popular bridges in New York' : searchTitle
 
   return (
     <main className="mx-auto min-h-svh w-full max-w-md bg-page px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-28">
@@ -228,6 +181,24 @@ export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
         </button>
       </form>
 
+      {/* Browse — guided discovery (replaces the old Filters button). */}
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={() => setBrowseOpen('location')}
+          className="flex-1 rounded-lg border border-divider bg-surface px-3 py-2.5 text-sm font-medium text-ink active:bg-divider"
+        >
+          🌍 Browse by location
+        </button>
+        <button
+          type="button"
+          onClick={() => setBrowseOpen('type')}
+          className="flex-1 rounded-lg border border-divider bg-surface px-3 py-2.5 text-sm font-medium text-ink active:bg-divider"
+        >
+          🏗 Browse by type
+        </button>
+      </div>
+
       <section className="mt-5">
         {status === 'loading' ? (
           <p className="text-sm text-muted">Searching for “{searched}”…</p>
@@ -239,39 +210,32 @@ export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
           </div>
         ) : (
           <div className="space-y-3">
-            <FilterControls
-              options={options}
-              filters={filters}
-              onChange={setFilters}
-              onSelectPerson={browseMode ? runDiscovery : undefined}
-              onClearAll={backToDefault}
-            />
-
             {listLabel ? (
               <p className="text-xs font-medium uppercase tracking-wide text-muted">{listLabel}</p>
             ) : null}
 
             {hasResults ? (
-              personEmpty ? (
-                <p className="text-sm text-muted">No other bridges by {personName} found.</p>
-              ) : filtered.length === 0 ? (
-                <p className="text-sm text-muted">No bridges match these filters.</p>
-              ) : (
-                <ul className="space-y-2.5">
-                  {filtered.map((bridge) => (
-                    <BridgeCard key={bridge.id} bridge={bridge} onSelect={setSelected} />
-                  ))}
-                </ul>
-              )
+              <ul className="space-y-2.5">
+                {results.map((bridge) => (
+                  <BridgeCard key={bridge.id} bridge={bridge} onSelect={setSelected} />
+                ))}
+              </ul>
             ) : status === 'done' ? (
               <p className="text-sm text-muted">
-                No named bridge found for “{searched}”. Try a different spelling, or open Filters to
-                browse by architect or engineer.
+                No bridges found for “{searched}”. Try a different spelling, or use Browse to discover
+                by location, architect, or engineer.
               </p>
             ) : null}
           </div>
         )}
       </section>
+
+      {browseOpen === 'location' ? (
+        <BrowseLocationSheet onClose={() => setBrowseOpen(null)} onPick={browseLocation} />
+      ) : null}
+      {browseOpen === 'type' ? (
+        <BrowseTypeSheet onClose={() => setBrowseOpen(null)} onPickPerson={runDiscovery} />
+      ) : null}
     </main>
   )
 }

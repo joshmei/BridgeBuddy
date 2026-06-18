@@ -1,5 +1,6 @@
 # Bridge Buddy — Product Brief
-> Living document. Update this as decisions are made. Last updated: 2026-06-17 (session 6).
+> Living document. Update this as decisions are made. Last updated: 2026-06-17 (session 7).
+> **Latest change (2026-06-17, session 7):** **Browse — guided discovery, replaces the old Filters.** Removed the Phase 1.5 filter chip-row/bottom-sheet (`FilterControls.tsx` + `lib/filters.ts` deleted). Search box now has two buttons: **🌍 Browse by location** (hardcoded ~197 countries, US pinned, → states/provinces for US/Canada) and **🏗 Browse by type** (architect/engineer via existing Wikidata discovery). Each selection runs a search immediately (max 20, no Apply). **Structure-type browse deferred** (Photon can't do "suspension bridges" well — needs a real backend). Detail-page architect/engineer links repointed to the same discovery. See §5.6.
 > **Working name:** Bridge Buddy (placeholder — real name still TBD, see §10/§11).
 > **Latest change (2026-06-17, session 6):** **Phase 3 — warm color palette + Mapbox map.** (1) Replaced the cold slate/blue scheme with the welcome video's sunset palette (warm rose/blush/mauve/navy), defined once as Tailwind v4 `@theme` tokens (`index.css`) and swept across all components — light mode only. "I've Crossed This"/Undo, the dark Welcome hero, structure-type badge colors, and error reds left untouched. (2) Added a **Mapbox map as the fixed header on My Bridges** (NOT a tab — tab bar stays Search · My Bridges · Stats): dark `dark-v11`, pins colored by structure type (same source of truth as badges), clustering, tap-pin→callout→detail, fit-to-pins with US fallback; `mapbox-gl` lazy-loaded. See §5.5 Phase 3.
 
@@ -241,52 +242,27 @@ Two parts, built colors-first then map.
 
 ---
 
-## 5.6 Search-results filtering (Phase 1.5)
+## 5.6 Browse — guided discovery (Phase 3, 2026-06-17) — replaces the old Filters
 
-A filter system layered on the **search results** screen, so the user can narrow what a search returns *before* tapping into a detail page. Added 2026-05-29 (scope addition, "Phase 1.5"). **Applies to search results only**; the same UI + logic is reused on the Phase 2 **My Bridges** log.
+**Replaced the Phase 1.5 filter system entirely.** The previous chip-row + "Filters" bottom sheet (client-side AND-refine over geography/type/architect/engineer) is **removed** — `FilterControls.tsx` and `lib/filters.ts` deleted. Browse is a structured way to *discover* bridges without knowing a name; the search box stays for name lookups. **Every Browse selection runs a search immediately and dismisses the sheet — no Apply button.**
 
-**Cross-cutting rules**
-- **AND logic.** Every active filter narrows the set; filters never expand it. Multiple filters stack (e.g. country = United States **AND** structure type = Suspension).
-- **Data-driven, no new APIs.** Every filter derives from data already on each enriched result — region label (geography), structure findings (type), `architect`, `engineer`. No extra network calls.
-- **Hide empty filters.** Architect and engineer filters are shown **only** when at least one result in the current set has that field; otherwise hidden. Geography/type always available.
-- **Mobile-first (390px, iPhone Safari).** Filter controls are a bottom sheet and/or a horizontal chip row — never a sidebar. (Exact pattern: pending user approval before build.)
+**Entry points.** Two equal-width buttons below the search box (390px, thumb-friendly): **🌍 Browse by location** and **🏗 Browse by type**. Each opens a bottom sheet (slide-up, X to dismiss).
 
-**1. Geographic filter**
-- First level: **Country** (e.g. United States, France, Australia). The list shows countries present in the current results.
-- Second level: if **United States or Canada** is selected, show a **State/Province** picker beneath it. Other countries stop at country level.
-- Source: structured `country` + `state` fields carried on each result (from Photon's address breakdown). No new API for the filter itself.
-- **Country pinning (which country sits at the top of the list):**
-  - If the browser has granted geolocation, reverse-geocode the user's GPS position to a country (Nominatim reverse: `…/reverse?format=json&lat=&lon=`, read `address.country`) and pin that country at the top.
-  - On GPS unavailable / denied / timeout → **silently** pin **United States** (no error shown).
-  - When US is the *default* pin (GPS fallback), **Canada** is pinned second; the rest follow alphabetically. When GPS determines the top country, Canada gets **no** special treatment (alphabetical) — unless the user is in Canada, in which case Canada is the GPS pin.
-  - **Never request GPS on page load.** Request only when the user opens the filter sheet and taps the **Country** filter, so the permission prompt appears in context. Result is cached for the session.
+**Browse by location** (sheet, two levels max):
+- **Country** — scrollable rows (flag emoji + name) from a **hardcoded** ~197-country list (`lib/browseLocations.ts`), fully alphabetical with **United States pinned to the top** (`COUNTRIES_BROWSE_ORDER`; flag computed from the ISO code, no hand-typed emoji). Tapping a non-US/Canada country → run `searchAndEnrich("bridges in [Country]", 20)`.
+- **State/Province** — tapping United States or Canada swaps the list (same sheet, **‹ Back** to return) for the **50 states / 13 provinces** (hardcoded). Tapping one → `searchAndEnrich("bridges in [State]", 20)`. No city/borough drill-down.
 
-**2. Structure-type filter**
-- Multi-select over the 9 canonical types (§6). Formalizes the existing badge into an explicit filter.
+**Browse by type** (sheet):
+- **By architect** and **Structural engineer** — the existing bundled lists (`filterMetadata.json` → `ARCHITECTS`/`ENGINEERS`), unchanged. Tapping a name runs the existing Wikidata discovery (`searchBridgesByPerson`).
+- **Structure-type browse is DEFERRED (pinned).** Photon is a name/place geocoder, so "suspension bridges" returns poor results and there's no per-type index behind it. Until a real backend exists (Overpass by `bridge:structure` / Wikidata by P31), the structure-type tile grid is **not shipped** — no dead taps. Colors, when it lands, come from `structureTypes.ts` (one source of truth, same as the badges).
 
-**3. Architect filter**
-- Lists only architects **present in the current result set** (not a global list). Selecting one narrows to bridges by that architect. Source: `architect` (Wikidata/OSM).
+**Results.** All Browse selections land on the standard results screen: **max 20 results, no pagination/infinite-scroll**, same cards. Title reflects the selection — "Bridges in New Jersey" / "Bridges by Joseph Strauss".
 
-**4. Structural-engineer filter**
-- Same as architect, for `engineer`. Lists only engineers present in the current results.
+**Detail-page architect/engineer links** now run the **same discovery search** (repointed from the deleted refine-filter path).
 
-**5. Clickable architect / engineer on the detail page**
-- The Architect and Structural Engineer rows in the detail facts table become **tappable links** (subtle underline / colored text — link, not button).
-- Tapping navigates back to search results with that person pre-applied as the active architect/engineer filter.
-- If there are no other bridges by that person, show a clear empty state: **"No other bridges by [name] found."**
+**Known risk (verify):** location text searches go through **Photon** ("bridges in New Jersey" tested working by the user); other phrasings may be hit-or-miss. If quality is weak we'll move location/type browse to a stronger backend (Overpass area / Wikidata) as a follow-up.
 
-**6. Home-screen filters via bundled static config (REVISED 2026-05-30 — built)**
-- Goal: a user who doesn't know a bridge's name can open the filter panel **on the home screen** (before any search) and browse to a bridge.
-- **Filter OPTION lists come from a static bundled JSON** (`app/src/data/filterMetadata.json`, §9) — countries, states-by-country, architects, engineers. Generated by `phase-1/gen-seed.mjs` and shipped with the app: instant, zero network, no database, nothing for the user to set up. (Replaces the dropped `filter_metadata` Supabase table — no write-through / no self-growth; re-run the generator to refresh.) Structure types are the 9 canonical values.
-- **RESULTS on apply (decision #11):**
-  - **Architect / engineer → discovery query** (`wikidataDiscovery.ts`): on the home screen, picking a person runs a Wikidata SPARQL query for that person's bridges (matched by exact English label, which is what enrichment + the config store), then enriches each by QID. These are the home-screen *producers*.
-  - **Structure type / country → client-side refine** (as already built): they narrow the current result set, they don't run a query. So on a blank home screen they don't produce results on their own; architect/engineer (or a name search) is the entry point.
-- **Country pinning:** unchanged from #1 — GPS (Nominatim reverse) pins the user's country when permitted (requested only on opening the Country filter), else US first / Canada second / rest alphabetical.
-- **Filter source per screen:** home (pre-search) → bundled static config; search/discovery results → derived from the in-memory result set; Phase 2 My Bridges → `SELECT DISTINCT` per field from `user_logs`.
-
-**Open follow-ups (logged 2026-05-30, revisit when phase work settles):**
-- **(a) Country / structure-type as home producers.** User wants these to *produce* results on the home screen (not just refine), like architect/engineer. Deferred at user's request ("don't care right now, come back when we're done"). Would need a query per facet (Wikidata by P17 country / by P31 type).
-- **(b) Default home list = prominent New York bridges — DONE 2026-05-30.** Before any search, the home page shows 15 curated prominent NY bridges (Brooklyn, GWB, Verrazzano, Manhattan, Williamsburg, Queensboro, …). A live Wikidata "bridges in NY State" query **504s** (transitive located-in join too heavy), so the list is generated at build time (`phase-1/gen-default-bridges.ts` runs each curated name through the real pipeline) and bundled as `app/src/data/defaultBridges.json` — instant home load, no runtime query. Refresh = re-run the generator. "Clear all" returns to this default. (Curated prominent set, not literally every NY bridge — enriching hundreds on load isn't feasible.)
+*(Default home list unchanged: 15 curated prominent NY bridges, bundled `app/src/data/defaultBridges.json`, built by `phase-1/gen-default-bridges.ts`.)*
 
 ---
 
