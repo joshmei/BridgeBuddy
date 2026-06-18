@@ -119,9 +119,10 @@ export function BrowseLocationSheet({
   )
 }
 
-// Browse by type — architect / engineer (existing lists + discovery search).
-// Structure-type browse is intentionally not here yet (no backend — deferred).
-export function BrowseTypeSheet({
+// Browse by builder — architect / engineer (existing lists + discovery search).
+// (Structure-type browse is a separate future feature — it returns once it has a
+// proper backend; it is intentionally absent here, not a placeholder.)
+export function BrowseBuilderSheet({
   onClose,
   onPickPerson,
 }: {
@@ -129,8 +130,8 @@ export function BrowseTypeSheet({
   onPickPerson: (role: PersonRole, value: string) => void
 }) {
   return (
-    <BottomSheet title="Browse by type" onClose={onClose}>
-      <Section label="By architect">
+    <BottomSheet title="Browse by builder" onClose={onClose}>
+      <Section label="Architect">
         {ARCHITECTS.map((a) => (
           <ListRow key={a} onClick={() => onPickPerson('architect', a)}>
             {a}

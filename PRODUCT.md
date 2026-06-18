@@ -1,6 +1,6 @@
 # Bridge Buddy — Product Brief
 > Living document. Update this as decisions are made. Last updated: 2026-06-17 (session 7).
-> **Latest change (2026-06-17, session 7):** **Browse — guided discovery, replaces the old Filters.** Removed the Phase 1.5 filter chip-row/bottom-sheet (`FilterControls.tsx` + `lib/filters.ts` deleted). Search box now has two buttons: **🌍 Browse by location** (hardcoded ~197 countries, US pinned, → states/provinces for US/Canada) and **🏗 Browse by type** (architect/engineer via existing Wikidata discovery). Each selection runs a search immediately (max 20, no Apply). **Structure-type browse deferred** (Photon can't do "suspension bridges" well — needs a real backend). Detail-page architect/engineer links repointed to the same discovery. See §5.6.
+> **Latest change (2026-06-17, session 7):** **Browse — guided discovery, replaces the old Filters.** Removed the Phase 1.5 filter chip-row/bottom-sheet (`FilterControls.tsx` + `lib/filters.ts` deleted). Search box now has two buttons: **🌍 Browse by location** (hardcoded ~197 countries, US pinned, → states/provinces for US/Canada) and **🏗 Browse by builder** (Architect / Structural engineer via existing Wikidata discovery). Each selection runs a search immediately (max 20, no Apply). **Structure-type browse removed entirely** — returns as its own feature once it has a real backend (Photon can't do "suspension bridges"). Detail-page architect/engineer links repointed to the same discovery. See §5.6.
 > **Working name:** Bridge Buddy (placeholder — real name still TBD, see §10/§11).
 > **Latest change (2026-06-17, session 6):** **Phase 3 — warm color palette + Mapbox map.** (1) Replaced the cold slate/blue scheme with the welcome video's sunset palette (warm rose/blush/mauve/navy), defined once as Tailwind v4 `@theme` tokens (`index.css`) and swept across all components — light mode only. "I've Crossed This"/Undo, the dark Welcome hero, structure-type badge colors, and error reds left untouched. (2) Added a **Mapbox map as the fixed header on My Bridges** (NOT a tab — tab bar stays Search · My Bridges · Stats): dark `dark-v11`, pins colored by structure type (same source of truth as badges), clustering, tap-pin→callout→detail, fit-to-pins with US fallback; `mapbox-gl` lazy-loaded. See §5.5 Phase 3.
 
@@ -246,15 +246,15 @@ Two parts, built colors-first then map.
 
 **Replaced the Phase 1.5 filter system entirely.** The previous chip-row + "Filters" bottom sheet (client-side AND-refine over geography/type/architect/engineer) is **removed** — `FilterControls.tsx` and `lib/filters.ts` deleted. Browse is a structured way to *discover* bridges without knowing a name; the search box stays for name lookups. **Every Browse selection runs a search immediately and dismisses the sheet — no Apply button.**
 
-**Entry points.** Two equal-width buttons below the search box (390px, thumb-friendly): **🌍 Browse by location** and **🏗 Browse by type**. Each opens a bottom sheet (slide-up, X to dismiss).
+**Entry points.** Two equal-width buttons below the search box (390px, thumb-friendly): **🌍 Browse by location** and **🏗 Browse by builder**. Each opens a bottom sheet (slide-up, X to dismiss).
 
 **Browse by location** (sheet, two levels max):
 - **Country** — scrollable rows (flag emoji + name) from a **hardcoded** ~197-country list (`lib/browseLocations.ts`), fully alphabetical with **United States pinned to the top** (`COUNTRIES_BROWSE_ORDER`; flag computed from the ISO code, no hand-typed emoji). Tapping a non-US/Canada country → run `searchAndEnrich("bridges in [Country]", 20)`.
 - **State/Province** — tapping United States or Canada swaps the list (same sheet, **‹ Back** to return) for the **50 states / 13 provinces** (hardcoded). Tapping one → `searchAndEnrich("bridges in [State]", 20)`. No city/borough drill-down.
 
-**Browse by type** (sheet):
-- **By architect** and **Structural engineer** — the existing bundled lists (`filterMetadata.json` → `ARCHITECTS`/`ENGINEERS`), unchanged. Tapping a name runs the existing Wikidata discovery (`searchBridgesByPerson`).
-- **Structure-type browse is DEFERRED (pinned).** Photon is a name/place geocoder, so "suspension bridges" returns poor results and there's no per-type index behind it. Until a real backend exists (Overpass by `bridge:structure` / Wikidata by P31), the structure-type tile grid is **not shipped** — no dead taps. Colors, when it lands, come from `structureTypes.ts` (one source of truth, same as the badges).
+**Browse by builder** (sheet) — renamed from "Browse by type" 2026-06-17:
+- Two sections, **Architect** and **Structural engineer** — the existing bundled lists (`filterMetadata.json` → `ARCHITECTS`/`ENGINEERS`), unchanged. Tapping a name runs the existing Wikidata discovery (`searchBridgesByPerson`).
+- **Structure-type browse is a separate future feature, removed from Browse entirely** (no section, no placeholder, no dead taps). Photon is a name/place geocoder, so "suspension bridges" returns poor results and there's no per-type index behind it. It returns as its own feature once it has a proper backend (Overpass by `bridge:structure` / Wikidata by P31); colors will come from `structureTypes.ts` (same source as the badges).
 
 **Results.** All Browse selections land on the standard results screen: **max 20 results, no pagination/infinite-scroll**, same cards. Title reflects the selection — "Bridges in New Jersey" / "Bridges by Joseph Strauss".
 

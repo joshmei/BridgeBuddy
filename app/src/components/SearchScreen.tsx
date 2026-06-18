@@ -7,7 +7,7 @@ import { searchBridgesByPerson, type PersonRole } from '../lib/wikidataDiscovery
 import defaultBridgesData from '../data/defaultBridges.json'
 import { StructureBadge } from './StructureBadge'
 import { DetailScreen } from './DetailScreen'
-import { BrowseLocationSheet, BrowseTypeSheet } from './Browse'
+import { BrowseLocationSheet, BrowseBuilderSheet } from './Browse'
 
 // Curated prominent New York bridges, generated at build time
 // (phase-1/gen-default-bridges.ts) — the default home browse before any search.
@@ -92,7 +92,7 @@ export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
   const [searched, setSearched] = useState('')
   const [searchTitle, setSearchTitle] = useState<string | null>(null)
   const [selected, setSelected] = useState<Bridge | null>(null)
-  const [browseOpen, setBrowseOpen] = useState<'location' | 'type' | null>(null)
+  const [browseOpen, setBrowseOpen] = useState<'location' | 'builder' | null>(null)
   const runId = useRef(0)
 
   // Shared runner: race-guarded, sets the loading/results/error state and the
@@ -192,10 +192,10 @@ export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
         </button>
         <button
           type="button"
-          onClick={() => setBrowseOpen('type')}
+          onClick={() => setBrowseOpen('builder')}
           className="flex-1 rounded-lg border border-divider bg-surface px-3 py-2.5 text-sm font-medium text-ink active:bg-divider"
         >
-          🏗 Browse by type
+          🏗 Browse by builder
         </button>
       </div>
 
@@ -233,8 +233,8 @@ export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
       {browseOpen === 'location' ? (
         <BrowseLocationSheet onClose={() => setBrowseOpen(null)} onPick={browseLocation} />
       ) : null}
-      {browseOpen === 'type' ? (
-        <BrowseTypeSheet onClose={() => setBrowseOpen(null)} onPickPerson={runDiscovery} />
+      {browseOpen === 'builder' ? (
+        <BrowseBuilderSheet onClose={() => setBrowseOpen(null)} onPickPerson={runDiscovery} />
       ) : null}
     </main>
   )
