@@ -21,7 +21,7 @@
    Apple's -webkit-fill-available are fallbacks; the calc(var(--vh)) wins where
    supported because it's the value we can correct after the viewport settles. */
 .welcome-fill {
-  height: 100vh; /* fallback */
-  height: -webkit-fill-available; /* iOS fallback */
+    height: -webkit-fill-available; /* iOS fallback */
   height: calc(var(--vh, 1vh) * 100); /* JS-corrected, authoritative */
+  height: 100vh; /* fallback */
 }
