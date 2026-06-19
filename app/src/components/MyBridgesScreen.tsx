@@ -20,6 +20,9 @@ const BridgesMap = lazy(() => import('./BridgesMap').then((m) => ({ default: m.B
 
 const MAP_CLASS = 'h-[38dvh] w-full shrink-0'
 
+// Feature flag — flip to false to hide the "Filter by type" control on My Bridges.
+const SHOW_STRUCTURE_FILTER = true
+
 // iOS-style red remove control. Sits in a 44x44 tap target (Apple guideline).
 function MinusCircle() {
   return (
@@ -314,7 +317,7 @@ export function MyBridgesScreen({
       )}
 
       {/* Structure-type filter — below the map, options = types in her collection. */}
-      {user && status === 'done' && items.length > 0 ? (
+      {SHOW_STRUCTURE_FILTER && user && status === 'done' && items.length > 0 ? (
         <StructureFilterBar
           present={present}
           selected={typeFilter}
