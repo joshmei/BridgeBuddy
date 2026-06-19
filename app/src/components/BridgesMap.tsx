@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import type { Bridge } from '../lib/bridge'
@@ -8,7 +8,7 @@ import {
   STRUCTURE_TYPE_LABELS,
   UNKNOWN_STRUCTURE_COLOR,
 } from '../lib/structureTypes'
-import { MAPBOX_TOKEN, MAP_STYLE, US_CENTER, US_ZOOM } from '../lib/mapbox'
+import { MAPBOX_TOKEN, MAP_STYLE, MAP_STYLES, US_CENTER, US_ZOOM } from '../lib/mapbox'
 
 // Dark Mapbox map of the user's logged bridges (Phase 3), used as the fixed
 // header on the My Bridges screen. Pins are colored by structure type from the
@@ -68,6 +68,84 @@ function popupHTML(bridge: Bridge): string {
   )
 }
 
+// Add the bridge source + pin/cluster layers + 3D buildings. Run on initial load
+// AND after every style switch (map.setStyle wipes custom sources/layers, so they
+// must be re-added). Pins/clusters are added last so they draw on top; 3D
+// buildings go beneath the labels. Click/zoom handlers persist across setStyle, so
+// they're attached once in the component (not here).
+function addBridgeLayers(map: mapboxgl.Map, features: PinFeature[]) {
+  if (map.getSource('bridges')) return
+  map.addSource('bridges', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features },
+    cluster: true,
+    clusterRadius: 50,
+    clusterMaxZoom: 14,
+  })
+  map.addLayer({
+    id: 'clusters',
+    type: 'circle',
+    source: 'bridges',
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-color': '#1a1a2e',
+      'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28],
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#ffffff',
+    },
+  })
+  map.addLayer({
+    id: 'cluster-count',
+    type: 'symbol',
+    source: 'bridges',
+    filter: ['has', 'point_count'],
+    layout: {
+      'text-field': ['get', 'point_count_abbreviated'],
+      'text-size': 13,
+      'text-font': ['DIN Pro Medium', 'Arial Unicode MS Bold'],
+    },
+    paint: { 'text-color': '#ffffff' },
+  })
+  map.addLayer({
+    id: 'points',
+    type: 'circle',
+    source: 'bridges',
+    filter: ['!', ['has', 'point_count']],
+    paint: {
+      'circle-color': ['get', 'color'],
+      'circle-radius': 7,
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#ffffff',
+    },
+  })
+  // 3D buildings (zoom 15+), beneath the first label layer. Wrapped because a
+  // style without building extrusions would otherwise throw.
+  try {
+    const labelLayerId = map
+      .getStyle()
+      .layers?.find((l) => l.type === 'symbol' && l.layout?.['text-field'])?.id
+    map.addLayer(
+      {
+        id: '3d-buildings',
+        source: 'composite',
+        'source-layer': 'building',
+        filter: ['==', 'extrude', 'true'],
+        type: 'fill-extrusion',
+        minzoom: 15,
+        paint: {
+          'fill-extrusion-color': '#1a1a2e',
+          'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'height']],
+          'fill-extrusion-base': ['get', 'min_height'],
+          'fill-extrusion-opacity': 0.8,
+        },
+      },
+      labelLayerId,
+    )
+  } catch {
+    /* style has no building extrusions — skip 3D */
+  }
+}
+
 export function BridgesMap({
   bridges,
   onSelect,
@@ -84,6 +162,7 @@ export function BridgesMap({
   const bridgesRef = useRef(bridges)
   const onSelectRef = useRef(onSelect)
   const didFitRef = useRef(false)
+  const [styleUrl, setStyleUrl] = useState<string>(MAP_STYLE)
 
   // Keep refs current so the once-only init effect's handlers read latest props.
   useEffect(() => {
@@ -91,12 +170,22 @@ export function BridgesMap({
     onSelectRef.current = onSelect
   })
 
+  // Switch the basemap style. setStyle wipes custom sources/layers, so re-add
+  // them once the new style finishes loading. Camera + click/zoom handlers persist.
+  function switchStyle(url: string) {
+    const map = mapRef.current
+    if (!map || url === styleUrl) return
+    setStyleUrl(url)
+    map.setStyle(url)
+    map.once('style.load', () => addBridgeLayers(map, featuresFor(bridgesRef.current)))
+  }
+
   // Initialize the map once.
   useEffect(() => {
     if (!containerRef.current || !MAPBOX_TOKEN) return
-    mapboxgl.accessToken = MAPBOX_TOKEN
     const map = new mapboxgl.Map({
       container: containerRef.current,
+      accessToken: MAPBOX_TOKEN,
       style: MAP_STYLE,
       center: US_CENTER,
       zoom: US_ZOOM,
@@ -106,81 +195,7 @@ export function BridgesMap({
     map.addControl(new mapboxgl.AttributionControl({ compact: true }))
 
     map.on('load', () => {
-      map.addSource('bridges', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: featuresFor(bridgesRef.current) },
-        cluster: true,
-        clusterRadius: 50,
-        clusterMaxZoom: 14,
-      })
-      map.addLayer({
-        id: 'clusters',
-        type: 'circle',
-        source: 'bridges',
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-color': '#1a1a2e',
-          'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28],
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff',
-        },
-      })
-      map.addLayer({
-        id: 'cluster-count',
-        type: 'symbol',
-        source: 'bridges',
-        filter: ['has', 'point_count'],
-        layout: {
-          'text-field': ['get', 'point_count_abbreviated'],
-          'text-size': 13,
-          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Bold'],
-        },
-        paint: { 'text-color': '#ffffff' },
-      })
-      // 3D buildings (zoom 15+) so the city rises around the pins at street
-      // level. Inserted beneath the first label layer so labels stay legible;
-      // the pin circle layers were added last, so pins still draw on top.
-      const labelLayerId = map
-        .getStyle()
-        .layers?.find((l) => l.type === 'symbol' && l.layout?.['text-field'])?.id
-      map.addLayer(
-        {
-          id: '3d-buildings',
-          source: 'composite',
-          'source-layer': 'building',
-          filter: ['==', 'extrude', 'true'],
-          type: 'fill-extrusion',
-          minzoom: 15,
-          paint: {
-            'fill-extrusion-color': '#1a1a2e',
-            'fill-extrusion-height': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              15,
-              0,
-              15.05,
-              ['get', 'height'],
-            ],
-            'fill-extrusion-base': ['get', 'min_height'],
-            'fill-extrusion-opacity': 0.8,
-          },
-        },
-        labelLayerId,
-      )
-
-      map.addLayer({
-        id: 'points',
-        type: 'circle',
-        source: 'bridges',
-        filter: ['!', ['has', 'point_count']],
-        paint: {
-          'circle-color': ['get', 'color'],
-          'circle-radius': 7,
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff',
-        },
-      })
+      addBridgeLayers(map, featuresFor(bridgesRef.current))
 
       // Auto-tilt into 3D past zoom 15; flatten on the way back out. On zoomend
       // (not zoom) so it never fights an in-progress pinch.
@@ -270,5 +285,37 @@ export function BridgesMap({
     )
   }
 
-  return <div ref={containerRef} className={className} />
+  return (
+    <div className={`relative ${className ?? ''}`}>
+      <div ref={containerRef} className="h-full w-full" />
+      {/* Style switcher pills — overlaid top-right, readable over any basemap. */}
+      <div
+        className="absolute right-2 top-2 z-10 flex gap-1"
+        style={{ background: 'rgba(255,255,255,0.85)', borderRadius: 20, padding: 3 }}
+      >
+        {MAP_STYLES.map((s) => {
+          const active = s.url === styleUrl
+          return (
+            <button
+              key={s.url}
+              type="button"
+              onClick={() => switchStyle(s.url)}
+              style={{
+                fontSize: 12,
+                lineHeight: 1.2,
+                padding: '4px 10px',
+                borderRadius: 20,
+                fontWeight: 500,
+                background: active ? '#D4879A' : '#ffffff',
+                color: active ? '#ffffff' : '#1a1a2e',
+                border: active ? '0.5px solid transparent' : '0.5px solid #e8d8dc',
+              }}
+            >
+              {s.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
