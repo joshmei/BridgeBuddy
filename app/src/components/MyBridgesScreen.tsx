@@ -2,6 +2,12 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import type { Bridge } from '../lib/bridge'
 import { useAuth } from '../lib/auth'
 import { getMyBridges, softDeleteCrossing, formatLogDate, type LoggedBridge } from '../lib/logs'
+import {
+  STRUCTURE_TYPES,
+  STRUCTURE_TYPE_COLORS,
+  STRUCTURE_TYPE_LABELS,
+  type StructureType,
+} from '../lib/structureTypes'
 import { StructureBadge } from './StructureBadge'
 import { DetailScreen } from './DetailScreen'
 
@@ -98,6 +104,75 @@ function LoggedCard({
   )
 }
 
+// Filter her collection by structure type (Phase 3). The options are exactly the
+// types present in her logged bridges, shown as colored badge-chips. Sits below
+// the map; collapsed by default behind a "Filter by type" button.
+function StructureFilterBar({
+  present,
+  selected,
+  onToggle,
+  onClear,
+}: {
+  present: StructureType[]
+  selected: StructureType[]
+  onToggle: (t: StructureType) => void
+  onClear: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  if (present.length === 0) return null
+  return (
+    <div className="shrink-0 border-b border-divider px-4 py-2">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-1.5 text-sm font-medium text-ink"
+          aria-expanded={open}
+        >
+          Filter by type
+          {selected.length > 0 ? (
+            <span className="rounded-full bg-accent px-1.5 text-xs font-semibold text-white">
+              {selected.length}
+            </span>
+          ) : null}
+          <span className="text-muted" aria-hidden>
+            {open ? '▾' : '▸'}
+          </span>
+        </button>
+        {selected.length > 0 ? (
+          <button type="button" onClick={onClear} className="text-xs font-medium text-accent">
+            Clear
+          </button>
+        ) : null}
+      </div>
+      {open ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {present.map((t) => {
+            const on = selected.includes(t)
+            const c = STRUCTURE_TYPE_COLORS[t]
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => onToggle(t)}
+                aria-pressed={on}
+                className="rounded-md px-2 py-0.5 text-xs font-semibold"
+                style={
+                  on
+                    ? { backgroundColor: c.bg, color: c.fg }
+                    : { color: c.bg, boxShadow: `inset 0 0 0 1.5px ${c.bg}` }
+                }
+              >
+                {STRUCTURE_TYPE_LABELS[t]}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function MyBridgesScreen({
   active,
   onGoToSearch,
@@ -114,6 +189,7 @@ export function MyBridgesScreen({
   const [pendingRemove, setPendingRemove] = useState<LoggedBridge | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [typeFilter, setTypeFilter] = useState<StructureType[]>([])
 
   // Reload whenever the tab becomes active (so a just-logged crossing appears)
   // or the user changes.
@@ -178,6 +254,18 @@ export function MyBridgesScreen({
     meta.display_name || meta.full_name || meta.name || user?.email || 'You'
   const avatarUrl: string | undefined = meta.avatar_url || meta.picture
 
+  // Filter options = structure types present in her collection; filtering a
+  // bridge matches if ANY of its types is selected (recovered from applyFilters).
+  const present = STRUCTURE_TYPES.filter((t) =>
+    items.some((it) => it.bridge.structures.some((s) => s.type === t)),
+  )
+  const filtered =
+    typeFilter.length === 0
+      ? items
+      : items.filter((it) => it.bridge.structures.some((s) => typeFilter.includes(s.type)))
+  const toggleType = (t: StructureType) =>
+    setTypeFilter((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]))
+
   return (
     <main className="mx-auto flex h-[100dvh] w-full max-w-md flex-col bg-page">
       {/* Header — unchanged in spirit: title (+ identity/controls when logged in). */}
@@ -219,11 +307,21 @@ export function MyBridgesScreen({
       {/* Map header — full width, fixed height; mounts only when this tab is active. */}
       {active ? (
         <Suspense fallback={<div className={MAP_CLASS} style={{ backgroundColor: '#1a1a2e' }} />}>
-          <BridgesMap bridges={user ? items : []} onSelect={setSelected} className={MAP_CLASS} />
+          <BridgesMap bridges={user ? filtered : []} onSelect={setSelected} className={MAP_CLASS} />
         </Suspense>
       ) : (
         <div className={MAP_CLASS} style={{ backgroundColor: '#1a1a2e' }} />
       )}
+
+      {/* Structure-type filter — below the map, options = types in her collection. */}
+      {user && status === 'done' && items.length > 0 ? (
+        <StructureFilterBar
+          present={present}
+          selected={typeFilter}
+          onToggle={toggleType}
+          onClear={() => setTypeFilter([])}
+        />
+      ) : null}
 
       {/* Bridge list / state area — scrolls independently below the map. */}
       <section className="min-h-0 flex-1 overflow-y-auto px-4 pb-28 pt-4">
@@ -270,7 +368,7 @@ export function MyBridgesScreen({
           </div>
         ) : (
           <ul className="space-y-2.5">
-            {items.map((item) => (
+            {filtered.map((item) => (
               <LoggedCard
                 key={item.log.id}
                 item={item}
