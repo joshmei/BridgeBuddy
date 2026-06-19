@@ -130,7 +130,7 @@ export function BridgeJournal({ bridge }: { bridge: Bridge }) {
       setClosing(false)
       closeTimer.current = null
       resetZoom() // panel fully closed → snap iOS zoom back
-    }, 300)
+    }, 450) // matches the journal-close animation duration
   }
 
   useEffect(() => () => {

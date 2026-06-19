@@ -26,32 +26,62 @@
   height: 100vh; /* fallback */
 }
 
-/* Journal panel — opens like turning a book cover: a 3D page turn hinged on the
-   left edge (Phase 3). The parent provides `perspective`; the panel rotates. */
+/* Journal panel — a soft, weighted page turning in from the RIGHT spine (Phase 3).
+   The parent provides `perspective`; the panel rotates around its right edge with
+   a skewY bow, a shadow that lifts off the surface, and a brightness dip as light
+   catches the turning page. */
 @keyframes journal-open {
-  from {
-    transform: rotateY(90deg);
+  0% {
+    transform: rotateY(-90deg) skewY(0deg);
+    box-shadow: -8px 0 20px rgba(0, 0, 0, 0);
+    filter: brightness(1);
   }
-  to {
-    transform: rotateY(0deg);
+  40% {
+    transform: rotateY(-45deg) skewY(3deg);
+    box-shadow: -8px 0 20px rgba(0, 0, 0, 0.15);
+    filter: brightness(0.92);
+  }
+  70% {
+    transform: rotateY(-15deg) skewY(1deg);
+    box-shadow: -8px 0 20px rgba(0, 0, 0, 0.08);
+    filter: brightness(0.97);
+  }
+  100% {
+    transform: rotateY(0deg) skewY(0deg);
+    box-shadow: -8px 0 20px rgba(0, 0, 0, 0);
+    filter: brightness(1);
   }
 }
 @keyframes journal-close {
-  from {
-    transform: rotateY(0deg);
+  0% {
+    transform: rotateY(0deg) skewY(0deg);
+    box-shadow: -8px 0 20px rgba(0, 0, 0, 0);
+    filter: brightness(1);
   }
-  to {
-    transform: rotateY(90deg);
+  30% {
+    transform: rotateY(-15deg) skewY(1deg);
+    box-shadow: -8px 0 20px rgba(0, 0, 0, 0.08);
+    filter: brightness(0.97);
+  }
+  60% {
+    transform: rotateY(-45deg) skewY(3deg);
+    box-shadow: -8px 0 20px rgba(0, 0, 0, 0.15);
+    filter: brightness(0.92);
+  }
+  100% {
+    transform: rotateY(-90deg) skewY(0deg);
+    box-shadow: -8px 0 20px rgba(0, 0, 0, 0);
+    filter: brightness(1);
   }
 }
 .journal-panel {
-  transform-origin: left center;
+  transform-origin: right center;
   transform-style: preserve-3d;
   backface-visibility: hidden;
 }
 .journal-open {
-  animation: journal-open 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation: journal-open 600ms cubic-bezier(0.17, 0.84, 0.44, 1) both;
 }
 .journal-close {
-  animation: journal-close 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation: journal-close 450ms cubic-bezier(0.17, 0.84, 0.44, 1) both;
 }
