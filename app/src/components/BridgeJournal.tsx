@@ -24,6 +24,21 @@ function NotebookIcon() {
 const TEXTAREA_CLASS =
   'w-full rounded-lg border border-divider bg-page p-2.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none'
 
+// After the journal closes, iOS Safari can stay zoomed in from the textarea.
+// Briefly clamp maximum-scale to snap the viewport back, then restore the normal
+// viewport so pinch-zoom elsewhere still works. Runs only after a full close.
+function resetZoom() {
+  const viewport = document.querySelector('meta[name="viewport"]')
+  if (!viewport) return
+  viewport.setAttribute(
+    'content',
+    'width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover',
+  )
+  setTimeout(() => {
+    viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover')
+  }, 300)
+}
+
 export function BridgeJournal({ bridge }: { bridge: Bridge }) {
   const { user, openAuthPrompt } = useAuth()
   const [open, setOpen] = useState(false)
@@ -112,6 +127,7 @@ export function BridgeJournal({ bridge }: { bridge: Bridge }) {
       setOpen(false)
       setClosing(false)
       closeTimer.current = null
+      resetZoom() // panel fully closed → snap iOS zoom back
     }, 300)
   }
 
