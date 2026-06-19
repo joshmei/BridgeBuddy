@@ -88,6 +88,7 @@ export function BridgeJournal({ bridge }: { bridge: Bridge }) {
       await addNote(user.id, bridge, draft.trim())
       setDraft('')
       setAdding(false)
+      resetZoom() // left the textarea → snap iOS zoom back
       await reload()
     } catch {
       setError('Could not save. Try again.')
@@ -103,6 +104,7 @@ export function BridgeJournal({ bridge }: { bridge: Bridge }) {
     try {
       await updateNote(user.id, editingId, editText.trim())
       setEditingId(null)
+      resetZoom() // left the textarea → snap iOS zoom back
       await reload()
     } catch {
       setError('Could not save. Try again.')
@@ -222,6 +224,7 @@ export function BridgeJournal({ bridge }: { bridge: Bridge }) {
                         onClick={() => {
                           setAdding(false)
                           setDraft('')
+                          resetZoom()
                         }}
                         className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted"
                       >
@@ -258,7 +261,10 @@ export function BridgeJournal({ bridge }: { bridge: Bridge }) {
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          onClick={() => setEditingId(null)}
+                          onClick={() => {
+                            setEditingId(null)
+                            resetZoom()
+                          }}
                           className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted"
                         >
                           Cancel
