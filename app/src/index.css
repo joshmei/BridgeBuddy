@@ -26,15 +26,32 @@
   height: 100vh; /* fallback */
 }
 
-/* Journal panel — slides in from the right (Phase 3). */
-@keyframes slide-in-right {
+/* Journal panel — opens like turning a book cover: a 3D page turn hinged on the
+   left edge (Phase 3). The parent provides `perspective`; the panel rotates. */
+@keyframes journal-open {
   from {
-    transform: translateX(100%);
+    transform: rotateY(90deg);
   }
   to {
-    transform: translateX(0);
+    transform: rotateY(0deg);
   }
 }
-.slide-in-right {
-  animation: slide-in-right 0.25s ease-out;
+@keyframes journal-close {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(90deg);
+  }
+}
+.journal-panel {
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+.journal-open {
+  animation: journal-open 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+.journal-close {
+  animation: journal-close 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }

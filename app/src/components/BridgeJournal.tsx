@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Bridge } from '../lib/bridge'
 import { useAuth } from '../lib/auth'
 import { getNotes, addNote, updateNote, formatNoteDate, type JournalNote } from '../lib/notes'
@@ -27,6 +27,8 @@ const TEXTAREA_CLASS =
 export function BridgeJournal({ bridge }: { bridge: Bridge }) {
   const { user, openAuthPrompt } = useAuth()
   const [open, setOpen] = useState(false)
+  const [closing, setClosing] = useState(false) // playing the close (page-turn) animation
+  const closeTimer = useRef<number | null>(null)
   const [notes, setNotes] = useState<JournalNote[]>([])
   const [loading, setLoading] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -94,13 +96,36 @@ export function BridgeJournal({ bridge }: { bridge: Bridge }) {
     }
   }
 
+  function openPanel() {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+    setClosing(false)
+    setOpen(true)
+  }
+
+  // Play the reverse page-turn, then unmount the panel.
+  function closePanel() {
+    setClosing(true)
+    closeTimer.current = window.setTimeout(() => {
+      setOpen(false)
+      setClosing(false)
+      closeTimer.current = null
+    }, 300)
+  }
+
+  useEffect(() => () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+  }, [])
+
   return (
     <>
       {/* Pill — right-aligned, above "I've Crossed This". */}
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={openPanel}
           className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[13px] font-medium text-ink"
           style={{ borderWidth: '0.5px', borderStyle: 'solid', borderColor: '#e8d8dc' }}
         >
@@ -114,17 +139,21 @@ export function BridgeJournal({ bridge }: { bridge: Bridge }) {
         </button>
       </div>
 
-      {/* Full-screen panel sliding in from the right. */}
+      {/* Full-screen panel that opens like a book cover (3D page turn). Parent
+          holds the perspective; the inner panel rotates on its left edge. */}
       {open ? (
-        <div className="slide-in-right fixed inset-0 z-50 flex flex-col bg-page">
-          <header className="flex shrink-0 items-center justify-between border-b border-divider px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="text-sm font-medium text-muted hover:text-accent"
-            >
-              ‹ Back
-            </button>
+        <div className="fixed inset-0 z-50" style={{ perspective: '1200px' }}>
+          <div
+            className={`journal-panel ${closing ? 'journal-close' : 'journal-open'} flex h-full w-full flex-col bg-page`}
+          >
+            <header className="flex shrink-0 items-center justify-between border-b border-divider px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+              <button
+                type="button"
+                onClick={closePanel}
+                className="text-sm font-medium text-muted hover:text-accent"
+              >
+                ‹ Back
+              </button>
             <h2 className="text-base font-semibold text-ink">Your Journal</h2>
             {user ? (
               <button
@@ -257,6 +286,7 @@ export function BridgeJournal({ bridge }: { bridge: Bridge }) {
                 )}
               </>
             )}
+            </div>
           </div>
         </div>
       ) : null}
