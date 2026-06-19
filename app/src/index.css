@@ -21,7 +21,20 @@
    Apple's -webkit-fill-available are fallbacks; the calc(var(--vh)) wins where
    supported because it's the value we can correct after the viewport settles. */
 .welcome-fill {
-    height: -webkit-fill-available; /* iOS fallback */
+  height: -webkit-fill-available; /* iOS fallback */
   height: calc(var(--vh, 1vh) * 100); /* JS-corrected, authoritative */
   height: 100vh; /* fallback */
+}
+
+/* Journal panel — slides in from the right (Phase 3). */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.slide-in-right {
+  animation: slide-in-right 0.25s ease-out;
 }

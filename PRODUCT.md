@@ -1,5 +1,6 @@
 # Bridge Buddy — Product Brief
-> Living document. Update this as decisions are made. Last updated: 2026-06-19 (session 8).
+> Living document. Update this as decisions are made. Last updated: 2026-06-19 (session 9).
+> **Latest change (2026-06-19, session 9):** **Private journal on bridge detail pages.** A right-aligned "Journal (n)" pill above "I've Crossed This" opens a full-screen right-slide panel of her private notes for that bridge (inline add/edit, newest-first, auto dates, "Edited" labels). New `bridge_notes` table (`0005` + RLS `0006`) — **soft-delete only, no hard deletes**, and **independent of `user_logs`** (notes reference `bridge_cache`, so removing a bridge never touches them; re-crossing shows them intact). Two read-only "Example" samples auto-seed on her first-ever logged bridge (once ever) and retire when she writes her first real note. See §9.6 + §9.
 > **Latest change (2026-06-19, session 8b):** **My Bridges structure-type filter.** A "Filter by type" button below the map reveals badge-chips for the structure types present in her collection; selecting filters her cards + map pins (OR within types). Built fresh over `LoggedBridge[]` (the deleted Search-era `FilterControls`/`lib/filters` was not restored — only the tiny structure-type match logic was reused). See §5.5 Phase 3.
 > **Latest change (2026-06-19, session 8):** **Browse/search perf — defer enrichment to on-open + cache read-through.** The list was enriching all 20 results up front (~61 API calls, Overpass throttled to 2 slots → ~30s). Now the list renders from **Photon only (~0.6s)**; each bridge is enriched **when opened** — `bridge_cache` read-through (fresh <30d → ~0.2s, no APIs) else a one-bridge enrich (~2–3s) that's written back to cache. List shows badges for already-cached results via one batched cache read. (Overpass 2-slot rate limit itself left as-is, per decision — Problems 1+3 fixed, Problem 2 deferred.) See §9 caching rationale.
 > **Latest change (2026-06-17, session 7):** **Browse — guided discovery, replaces the old Filters.** Removed the Phase 1.5 filter chip-row/bottom-sheet (`FilterControls.tsx` + `lib/filters.ts` deleted). Search box now has two buttons: **🌍 Browse by location** (hardcoded ~197 countries, US pinned, → states/provinces for US/Canada) and **🏗 Browse by builder** (Architect / Structural engineer via existing Wikidata discovery). Each selection runs a search immediately (max 20, no Apply). **Structure-type browse removed entirely** — returns as its own feature once it has a real backend (Photon can't do "suspension bridges"). Detail-page architect/engineer links repointed to the same discovery. See §5.6.
@@ -431,6 +432,16 @@ user_logs                             -- private, owner-scoped crossing record
   is_deleted               boolean    -- default false; SOFT DELETE (added 2026-06-13, 0004). Removing a bridge sets this true; all reads filter WHERE is_deleted = false. Rows preserved for a future "Recently Removed"/recovery feature — do not purge.
   created_at               timestamptz
   UNIQUE (user_id, bridge_id)         -- one row per user+bridge; revived (is_deleted→false) on re-cross
+
+bridge_notes                          -- private journal (added 2026-06-19, 0005). SOFT DELETE ONLY.
+  id          uuid PK (gen_random_uuid)
+  user_id     uuid FK → auth.users.id (on delete cascade)
+  bridge_id   uuid FK → bridge_cache.id (on delete cascade)  -- NOTE: references bridge_cache, NOT user_logs
+  note        text not null
+  is_sample   boolean    -- default false; the two onboarding example notes (Example chip; soft-deleted on first real note)
+  is_deleted  boolean    -- default false; SOFT DELETE — rows kept forever, all reads filter is_deleted = false
+  created_at  timestamptz
+  updated_at  timestamptz -- bumped on edit → "Edited" label when > created_at
 ```
 
 (Home-screen filter options are NOT a DB table — see the bundled static config note below.)
@@ -460,6 +471,18 @@ user_logs                             -- private, owner-scoped crossing record
 3. **No** profile page, **no** edit button yet — Phase 4.
 
 **Why this approach:** no extra screens/effort now; editing lives on the already-planned profile page; when V3 social (shareable profiles, following, commenting) lands, display name + avatar are already in place; the Google name is a sensible default.
+
+---
+
+## 9.6 Private journal (added 2026-06-19, session 9)
+
+A personal engineering journal on each bridge detail page — a stack of private notes (`bridge_notes`, §9). **Nobody else ever sees these; soft-delete only — no hard deletes anywhere in this feature** (RLS has no delete policy; "delete" is an UPDATE setting `is_deleted=true`).
+
+- **Permanence / independence (the core guarantee).** `bridge_notes.bridge_id` references **`bridge_cache`** (insert-only, never deleted), **not** `user_logs`. So removing a bridge from her collection (`user_logs.is_deleted=true`) has zero effect on her notes; re-crossing shows them exactly as left. The two `is_deleted` columns (`user_logs` vs `bridge_notes`) are completely independent — one never affects the other.
+- **Entry point.** A subtle right-aligned **"Journal (n)" pill** (notebook icon + active-note count) above "I've Crossed This"; tapping opens a **full-screen panel sliding in from the right**. Shown on any bridge regardless of crossing/enrichment state. Logged out → the panel shows "Sign in to keep a journal on this bridge" (no + button).
+- **Entries.** Newest first; each card: auto date header (`May 30, 2026` from `created_at`, not editable), note text, **[Edit]** (inline textarea), and a muted **"Edited"** label when `updated_at > created_at`. **+** opens an inline blank textarea with placeholder text. Plain text, no limit, no per-note delete UI yet (when added → soft delete).
+- **Sample entries.** On her **first-ever logged bridge** (active `user_logs` count = 1 **and** she has no `is_sample` rows ever — created at most once in her lifetime), two `is_sample=true` examples are auto-created (each with an "Example" chip, read-only/no Edit; #2 back-dated 1 min). When she saves her **first real note on any bridge**, both samples soft-delete so examples and real notes never mix.
+- **Data layer:** `lib/notes.ts` (`getNotes`/`addNote`/`updateNote`); sample creation in `recordCrossing` (`lib/logs.ts`). UI: `components/BridgeJournal.tsx`. Migrations `0005_bridge_notes.sql` + `0006_bridge_notes_rls.sql`.
 
 ---
 

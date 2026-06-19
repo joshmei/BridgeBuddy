@@ -142,7 +142,7 @@ function rowToLog(row: UserLogRow): CrossingLog {
 // Ensure the bridge is in bridge_cache; return its uuid. We never UPDATE an
 // existing row (RLS grants insert only — no client-side update/delete), so a
 // cached bridge's data is not refreshed here; that's a future/service-role job.
-async function ensureCached(bridge: Bridge): Promise<string> {
+export async function ensureCached(bridge: Bridge): Promise<string> {
   const existing = await supabase
     .from('bridge_cache')
     .select('id')
@@ -286,7 +286,42 @@ export async function recordCrossing(userId: string, bridge: Bridge): Promise<Cr
     .select(LOG_SELECT)
     .single()
   if (error) throw error
+  await createSamplesIfFirstEver(userId, bridgeId).catch(() => {})
   return rowToLog(data as unknown as UserLogRow)
+}
+
+// Onboarding journal samples, created on the user's first-ever logged bridge.
+const SAMPLE_NOTE_1 =
+  'This is an example note — your journal is private, only you can see it. Tap + to add your own notes about this bridge.'
+const SAMPLE_NOTE_2 =
+  'Example: Impressive structure — I love how the cable-stay design handles the span here. The deck clearance is surprisingly generous.'
+
+// Create the two sample journal entries the FIRST time she ever logs a bridge.
+// Guarded so they're created at most once in her lifetime: skip if she already
+// has ANY is_sample rows (regardless of is_deleted), or if this isn't her only
+// active log. Sample #2 is back-dated 1 minute so it sorts below #1.
+async function createSamplesIfFirstEver(userId: string, bridgeId: string): Promise<void> {
+  const sampleCheck = await supabase
+    .from('bridge_notes')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('is_sample', true)
+  if ((sampleCheck.count ?? 0) > 0) return
+
+  const logCount = await supabase
+    .from('user_logs')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('is_deleted', false)
+  if ((logCount.count ?? 0) !== 1) return
+
+  const now = Date.now()
+  const t1 = new Date(now).toISOString()
+  const t2 = new Date(now - 60_000).toISOString()
+  await supabase.from('bridge_notes').insert([
+    { user_id: userId, bridge_id: bridgeId, is_sample: true, note: SAMPLE_NOTE_1, created_at: t1, updated_at: t1 },
+    { user_id: userId, bridge_id: bridgeId, is_sample: true, note: SAMPLE_NOTE_2, created_at: t2, updated_at: t2 },
+  ])
 }
 
 // Undo (soft delete). Never hard-deletes — soft-deleted rows are preserved for a

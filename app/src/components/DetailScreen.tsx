@@ -10,6 +10,7 @@ import {
   type CrossingLog,
 } from '../lib/logs'
 import { StructureBadge } from './StructureBadge'
+import { BridgeJournal } from './BridgeJournal'
 
 function formatLength(meters: number): string {
   const ft = Math.round(meters * 3.28084)
@@ -226,6 +227,10 @@ export function DetailScreen({
           <h1 className="text-2xl font-semibold tracking-tight text-ink">{bridge.name}</h1>
           {bridge.region ? <p className="text-sm text-muted">{bridge.region}</p> : null}
         </header>
+
+        {/* Private journal — pill (right-aligned) opens a full-screen panel. Shown
+            regardless of crossing/enrichment state (the journal is independent). */}
+        <BridgeJournal bridge={bridge} />
 
         {/* Primary action — prominent, directly under the title (PART 4). */}
         {loading ? (
