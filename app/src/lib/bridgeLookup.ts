@@ -152,6 +152,57 @@ export async function enrichSearchResult(result: BridgeSearchResult): Promise<Br
   return (await enrichWithMeta(result)).bridge
 }
 
+// --- Phase 3 perf: shallow list + enrich-on-open ----------------------------
+// The old searchAndEnrich enriched all 20 results up front (~61 API calls,
+// Overpass throttled to 2 slots → ~30s). Now the list renders from Photon only,
+// and each bridge is enriched lazily when opened.
+
+// Lightweight Bridge from a Photon result — name + location only, nothing fetched.
+function toShallowBridge(r: BridgeSearchResult): Bridge {
+  return {
+    id: bridgeId(r.name, r.coordinate),
+    name: r.name,
+    region: r.region,
+    country: r.country,
+    state: r.state,
+    coordinate: r.coordinate,
+    structures: [],
+    yearBuilt: null,
+    architect: null,
+    engineer: null,
+    lengthMeters: null,
+    summary: null,
+    thumbnailUrl: null,
+    wikipediaUrl: null,
+    wikidataQid: null,
+    sources: { osm: false, wikidata: false, wikipedia: false },
+    enriched: false,
+  }
+}
+
+// Search → shallow results (one Photon call, no enrichment). Renders the list in
+// ~0.6s. Used by the search box and Browse-by-location.
+export async function searchShallow(query: string, limit = 20): Promise<Bridge[]> {
+  const results = (await searchBridges(query)).slice(0, limit)
+  return results.map(toShallowBridge)
+}
+
+// Enrich one shallow bridge on demand (when opened). Rebuilds a search result
+// from the shallow fields (no stored bbox → a small box around the point) and
+// runs the full OSM → Wikidata → Wikipedia pipeline for just this bridge.
+export async function enrichBridge(shallow: Bridge): Promise<Bridge> {
+  const result: BridgeSearchResult = {
+    name: shallow.name,
+    coordinate: shallow.coordinate ?? { lat: 0, lng: 0 },
+    region: shallow.region,
+    country: shallow.country,
+    state: shallow.state,
+    bbox: null,
+  }
+  const { bridge } = await enrichWithMeta(result)
+  return { ...bridge, enriched: true }
+}
+
 // Search + enrich every result, so cards carry the structure badge (the #1
 // feature, CLAUDE.md). `limit` bounds the API fan-out. Phase 2's Supabase cache
 // (§9) makes repeats instant.

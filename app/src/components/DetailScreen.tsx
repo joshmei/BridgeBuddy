@@ -193,6 +193,9 @@ export function DetailScreen({
     bridge.sources.wikidata && 'Wikidata',
     bridge.sources.wikipedia && 'Wikipedia',
   ].filter(Boolean) as string[]
+  // Shallow result still being enriched (opened from a search list) — show
+  // loading placeholders instead of empty/"unknown" facts (Phase 3 perf fix).
+  const loading = bridge.enriched === false
 
   return (
     <main className="mx-auto min-h-svh w-full max-w-md bg-page pb-28">
@@ -213,60 +216,78 @@ export function DetailScreen({
       <div className="space-y-5 px-4 pt-4">
         <header className="space-y-2">
           {/* Structure type at the top of every detail page (CLAUDE.md). */}
-          <StructureBadge structures={bridge.structures} />
+          {loading ? (
+            <span className="inline-block animate-pulse rounded-md bg-surface px-3 py-1 text-xs font-semibold text-muted">
+              Loading…
+            </span>
+          ) : (
+            <StructureBadge structures={bridge.structures} />
+          )}
           <h1 className="text-2xl font-semibold tracking-tight text-ink">{bridge.name}</h1>
           {bridge.region ? <p className="text-sm text-muted">{bridge.region}</p> : null}
         </header>
 
         {/* Primary action — prominent, directly under the title (PART 4). */}
-        <CrossedButton bridge={bridge} />
-
-        <dl className="rounded-xl border border-divider bg-surface px-4 py-1">
-          <Fact label="Built" value={year ? String(year) : null} />
-          <Fact label="Length" value={bridge.lengthMeters ? formatLength(bridge.lengthMeters) : null} />
-          <Fact
-            label="Architect"
-            value={bridge.architect}
-            onClick={
-              onFilterByPerson && bridge.architect
-                ? () => onFilterByPerson('architect', bridge.architect!)
-                : undefined
-            }
-          />
-          <Fact
-            label="Structural engineer"
-            value={bridge.engineer}
-            onClick={
-              onFilterByPerson && bridge.engineer
-                ? () => onFilterByPerson('engineer', bridge.engineer!)
-                : undefined
-            }
-          />
-        </dl>
-
-        {bridge.summary ? (
-          <section className="space-y-1">
-            <p className="text-sm leading-relaxed text-ink">{bridge.summary}</p>
-            {bridge.wikipediaUrl ? (
-              <a
-                href={bridge.wikipediaUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block text-sm font-medium text-accent"
-              >
-                Read more on Wikipedia →
-              </a>
-            ) : null}
-          </section>
+        {loading ? (
+          <div className="w-full rounded-xl bg-surface px-4 py-3 text-center text-base font-medium text-muted">
+            Loading details…
+          </div>
         ) : (
-          <p className="text-sm text-muted">No encyclopedia summary available for this bridge.</p>
+          <CrossedButton bridge={bridge} />
+        )}
+
+        {loading ? (
+          <p className="text-sm text-muted">Loading details…</p>
+        ) : (
+          <>
+            <dl className="rounded-xl border border-divider bg-surface px-4 py-1">
+              <Fact label="Built" value={year ? String(year) : null} />
+              <Fact label="Length" value={bridge.lengthMeters ? formatLength(bridge.lengthMeters) : null} />
+              <Fact
+                label="Architect"
+                value={bridge.architect}
+                onClick={
+                  onFilterByPerson && bridge.architect
+                    ? () => onFilterByPerson('architect', bridge.architect!)
+                    : undefined
+                }
+              />
+              <Fact
+                label="Structural engineer"
+                value={bridge.engineer}
+                onClick={
+                  onFilterByPerson && bridge.engineer
+                    ? () => onFilterByPerson('engineer', bridge.engineer!)
+                    : undefined
+                }
+              />
+            </dl>
+
+            {bridge.summary ? (
+              <section className="space-y-1">
+                <p className="text-sm leading-relaxed text-ink">{bridge.summary}</p>
+                {bridge.wikipediaUrl ? (
+                  <a
+                    href={bridge.wikipediaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-sm font-medium text-accent"
+                  >
+                    Read more on Wikipedia →
+                  </a>
+                ) : null}
+              </section>
+            ) : (
+              <p className="text-sm text-muted">No encyclopedia summary available for this bridge.</p>
+            )}
+          </>
         )}
 
         {/* MAP PIN — dependency-free OSM embed (decided 2026-05-29). Leaflet is
             reserved for the Phase 3 multi-pin map. */}
         {bridge.coordinate ? <MapPin lat={bridge.coordinate.lat} lng={bridge.coordinate.lng} /> : null}
 
-        {contributors.length > 0 ? (
+        {!loading && contributors.length > 0 ? (
           <p className="text-xs text-muted">Data: {contributors.join(' · ')}</p>
         ) : null}
       </div>

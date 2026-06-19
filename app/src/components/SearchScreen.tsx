@@ -2,8 +2,9 @@ import { useRef, useState } from 'react'
 import type { Bridge } from '../lib/bridge'
 import { useAuth } from '../lib/auth'
 import { parseYear } from '../lib/overpass'
-import { searchAndEnrich } from '../lib/bridgeLookup'
+import { searchShallow, enrichBridge } from '../lib/bridgeLookup'
 import { searchBridgesByPerson, type PersonRole } from '../lib/wikidataDiscovery'
+import { getCachedBridge, getCachedBridges, cacheBridge } from '../lib/logs'
 import defaultBridgesData from '../data/defaultBridges.json'
 import { StructureBadge } from './StructureBadge'
 import { DetailScreen } from './DetailScreen'
@@ -13,8 +14,8 @@ import { BrowseLocationSheet, BrowseBuilderSheet } from './Browse'
 // (phase-1/gen-default-bridges.ts) — the default home browse before any search.
 const DEFAULT_BRIDGES = defaultBridgesData as Bridge[]
 
-// Browse selections cap at 20 enriched results (no pagination).
-const BROWSE_LIMIT = 20
+// Search/browse list caps at 20.
+const LIMIT = 20
 
 type Status = 'idle' | 'loading' | 'error' | 'done'
 
@@ -39,7 +40,8 @@ function BridgeCard({ bridge, onSelect }: { bridge: Bridge; onSelect: (b: Bridge
         ) : null}
         <div className="min-w-0 flex-1 space-y-1.5">
           <h2 className="truncate text-base font-semibold text-ink">{bridge.name}</h2>
-          <StructureBadge structures={bridge.structures} />
+          {/* Badge only once enriched/cached — a shallow result shows name + location. */}
+          {bridge.enriched !== false ? <StructureBadge structures={bridge.structures} /> : null}
           <p className="text-xs text-muted">
             {secondary ? <span>{secondary}</span> : null}
             {secondary && year ? <span> · </span> : null}
@@ -51,9 +53,7 @@ function BridgeCard({ bridge, onSelect }: { bridge: Bridge; onSelect: (b: Bridge
   )
 }
 
-// Top-right auth control on the search home (Phase 2.5 #1). Logged out → a subtle
-// "Sign in" button opening the existing auth overlay. Logged in → her Google
-// avatar (initial-letter fallback) tapping through to the My Bridges tab.
+// Top-right auth control on the search home (Phase 2.5 #1).
 function HomeAuthControl({ onGoToProfile }: { onGoToProfile: () => void }) {
   const { user, openAuthPrompt } = useAuth()
 
@@ -84,7 +84,7 @@ function HomeAuthControl({ onGoToProfile }: { onGoToProfile: () => void }) {
 
 export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
   const [query, setQuery] = useState('')
-  // Default home view = the curated New York list (instant, bundled).
+  // Default home view = the curated New York list (instant, bundled, enriched).
   const [status, setStatus] = useState<Status>('done')
   const [results, setResults] = useState<Bridge[]>(DEFAULT_BRIDGES)
   const [isDefault, setIsDefault] = useState(true)
@@ -95,9 +95,14 @@ export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
   const [browseOpen, setBrowseOpen] = useState<'location' | 'builder' | null>(null)
   const runId = useRef(0)
 
-  // Shared runner: race-guarded, sets the loading/results/error state and the
-  // results title. `fetcher` returns the enriched bridges to show.
-  async function run(fetcher: () => Promise<Bridge[]>, searchedLabel: string, title: string | null) {
+  // Shared runner. `shallow` searches (Photon) render immediately, then upgrade
+  // any results already in bridge_cache so their badges appear without fetching.
+  async function run(
+    fetcher: () => Promise<Bridge[]>,
+    searchedLabel: string,
+    title: string | null,
+    shallow: boolean,
+  ) {
     const id = ++runId.current
     setStatus('loading')
     setError(null)
@@ -109,6 +114,12 @@ export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
       if (id !== runId.current) return
       setResults(bridges)
       setStatus('done')
+      if (shallow) {
+        const keys = bridges.filter((b) => b.enriched === false).map((b) => b.id)
+        const cached = await getCachedBridges(keys)
+        if (id !== runId.current || Object.keys(cached).length === 0) return
+        setResults((prev) => prev.map((b) => cached[b.id] ?? b))
+      }
     } catch (err) {
       if (id !== runId.current) return
       setError(err instanceof Error ? err.message : 'Lookup failed')
@@ -120,25 +131,47 @@ export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
     e.preventDefault()
     const name = query.trim()
     if (!name) return
-    run(() => searchAndEnrich(name, BROWSE_LIMIT), name, null)
+    run(() => searchShallow(name, LIMIT), name, null, true)
   }
 
-  // Browse by location → "bridges in [place]" (name/place search via Photon).
   function browseLocation(q: string, title: string) {
     setBrowseOpen(null)
-    run(() => searchAndEnrich(q, BROWSE_LIMIT), title, title)
+    run(() => searchShallow(q, LIMIT), title, title, true)
   }
 
-  // Architect/engineer → Wikidata bridges-by-person discovery (existing logic).
-  // Used by Browse-by-type AND the detail-page architect/engineer links.
+  // Architect/engineer → Wikidata discovery (returns enriched bridges).
   function runDiscovery(role: PersonRole, value: string) {
     setBrowseOpen(null)
-    run(() => searchBridgesByPerson(value, role), value, `Bridges by ${value}`)
+    run(() => searchBridgesByPerson(value, role), value, `Bridges by ${value}`, false)
   }
 
   function onPersonFromDetail(field: 'architect' | 'engineer', value: string) {
     setSelected(null)
     runDiscovery(field, value)
+  }
+
+  // Open a bridge. Already-enriched (default/discovery/cache-upgraded) → straight
+  // to detail. Shallow → show the detail in a loading state, then resolve via
+  // cache read-through (instant) or a one-bridge enrich (~2–3s), caching the
+  // result. Matches by reference so a later search doesn't clobber the wrong row.
+  async function openBridge(b: Bridge) {
+    setSelected(b)
+    if (b.enriched !== false) return
+    try {
+      let full = await getCachedBridge(b.id)
+      if (!full) {
+        full = await enrichBridge(b)
+        cacheBridge(full) // best-effort, fire-and-forget
+      }
+      const resolved = full
+      setResults((prev) => prev.map((x) => (x === b ? resolved : x)))
+      setSelected((cur) => (cur === b ? resolved : cur))
+    } catch {
+      // Enrichment failed — stop the loading state, show what we have.
+      const fallback: Bridge = { ...b, enriched: true }
+      setResults((prev) => prev.map((x) => (x === b ? fallback : x)))
+      setSelected((cur) => (cur === b ? fallback : cur))
+    }
   }
 
   if (selected) {
@@ -181,7 +214,6 @@ export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
         </button>
       </form>
 
-      {/* Browse — guided discovery (replaces the old Filters button). */}
       <div className="mt-3 flex gap-2">
         <button
           type="button"
@@ -217,7 +249,7 @@ export function SearchScreen({ onGoToProfile }: { onGoToProfile: () => void }) {
             {hasResults ? (
               <ul className="space-y-2.5">
                 {results.map((bridge) => (
-                  <BridgeCard key={bridge.id} bridge={bridge} onSelect={setSelected} />
+                  <BridgeCard key={bridge.id} bridge={bridge} onSelect={openBridge} />
                 ))}
               </ul>
             ) : status === 'done' ? (

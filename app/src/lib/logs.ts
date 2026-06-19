@@ -168,6 +168,51 @@ async function ensureCached(bridge: Bridge): Promise<string> {
   return inserted.data.id
 }
 
+// --- bridge_cache read-through (Phase 3 perf) --------------------------------
+
+const CACHE_FRESH_MS = 30 * 24 * 60 * 60 * 1000 // §9: refresh when older than 30 days
+
+// Cached enriched Bridge for a key, or null if absent/stale. Public read (RLS).
+export async function getCachedBridge(bridgeKey: string): Promise<Bridge | null> {
+  const { data, error } = await supabase
+    .from('bridge_cache')
+    .select('data, cached_at')
+    .eq('bridge_key', bridgeKey)
+    .maybeSingle()
+  if (error || !data?.data) return null
+  if (Date.now() - new Date(data.cached_at as string).getTime() > CACHE_FRESH_MS) return null
+  return data.data as Bridge
+}
+
+// Batched lookup for the results list — returns fresh cached bridges by key, so
+// already-cached results can show their badge immediately.
+export async function getCachedBridges(bridgeKeys: string[]): Promise<Record<string, Bridge>> {
+  if (bridgeKeys.length === 0) return {}
+  const { data, error } = await supabase
+    .from('bridge_cache')
+    .select('bridge_key, data, cached_at')
+    .in('bridge_key', bridgeKeys)
+  if (error || !data) return {}
+  const out: Record<string, Bridge> = {}
+  for (const row of data as Array<{ bridge_key: string; data: Bridge | null; cached_at: string }>) {
+    if (!row.data) continue
+    if (Date.now() - new Date(row.cached_at).getTime() > CACHE_FRESH_MS) continue
+    out[row.bridge_key] = row.data
+  }
+  return out
+}
+
+// Best-effort cache write after enriching a bridge on open, so future opens
+// (incl. cross-device) are instant. No-ops silently if signed out (RLS allows
+// insert only for authenticated) or on any error — never blocks the UI.
+export async function cacheBridge(bridge: Bridge): Promise<void> {
+  try {
+    await ensureCached(bridge)
+  } catch {
+    /* signed out or transient — ignore */
+  }
+}
+
 // --- crossings ---------------------------------------------------------------
 
 const LOG_SELECT =

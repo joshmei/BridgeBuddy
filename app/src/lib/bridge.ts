@@ -45,4 +45,8 @@ export interface Bridge {
     wikidata: boolean
     wikipedia: boolean
   }
+  // false = a lightweight Photon-only result (name/location, no Overpass/Wikidata/
+  // Wikipedia yet); enrichment is deferred until the bridge is opened (Phase 3
+  // perf fix). Absent/true = fully enriched (default home list, discovery, cache).
+  enriched?: boolean
 }
