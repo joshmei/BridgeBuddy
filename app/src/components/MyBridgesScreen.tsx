@@ -18,7 +18,7 @@ const BridgesMap = lazy(() => import('./BridgesMap').then((m) => ({ default: m.B
 // independently-scrolling list. Browsing is open to all; the list is personal, so
 // logged out it prompts sign-in. Edit mode lets her remove bridges (soft delete).
 
-const MAP_CLASS = 'h-[38dvh] w-full shrink-0'
+const MAP_CLASS = 'h-[25dvh] w-full shrink-0'
 
 // Feature flag — flip to false to hide the "Filter by type" control on My Bridges.
 const SHOW_STRUCTURE_FILTER = true
