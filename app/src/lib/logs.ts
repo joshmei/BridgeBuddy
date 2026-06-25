@@ -397,6 +397,7 @@ export interface Stats {
   // type they carry, so the buckets can sum to more than `total` (see §6/§10 —
   // structure type is never buried; accuracy over a clean partition).
   byStructure: Array<{ type: StructureType; count: number }>
+  mostRecent: LoggedBridge | null // latest last_crossing — a milestone
   firstEver: LoggedBridge | null // earliest first_recorded_crossing — a milestone
   mostCrossed: LoggedBridge | null // highest crossing_count
 }
@@ -418,9 +419,13 @@ export function computeStats(logged: LoggedBridge[]): Stats {
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count)
 
+  let mostRecent: LoggedBridge | null = null
   let firstEver: LoggedBridge | null = null
   let mostCrossed: LoggedBridge | null = null
   for (const item of logged) {
+    if (!mostRecent || item.log.lastCrossing > mostRecent.log.lastCrossing) {
+      mostRecent = item
+    }
     if (!firstEver || item.log.firstRecordedCrossing < firstEver.log.firstRecordedCrossing) {
       firstEver = item
     }
@@ -429,5 +434,5 @@ export function computeStats(logged: LoggedBridge[]): Stats {
     }
   }
 
-  return { total: logged.length, byStructure, firstEver, mostCrossed }
+  return { total: logged.length, byStructure, mostRecent, firstEver, mostCrossed }
 }

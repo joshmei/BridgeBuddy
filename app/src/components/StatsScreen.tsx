@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
+import type { Bridge } from '../lib/bridge'
 import { useAuth } from '../lib/auth'
-import { getMyBridges, computeStats, formatLogDate, type Stats } from '../lib/logs'
+import { getMyBridges, computeStats, formatLogDate, type Stats, type LoggedBridge } from '../lib/logs'
 import { STRUCTURE_TYPE_COLORS, STRUCTURE_TYPE_LABELS } from '../lib/structureTypes'
+import { StructureBadge } from './StructureBadge'
+import { DetailScreen } from './DetailScreen'
 
-// Stats (PART 6): total crossed, breakdown by structure type, the first-ever
-// recorded crossing (a milestone), and her most-crossed bridge.
+// Stats (PART 6): total crossed, breakdown by structure type, and three milestone
+// cards — most recently crossed, first recorded crossing, most crossed — each
+// tappable through to the bridge's detail page.
 
 function StatCard({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -15,14 +19,44 @@ function StatCard({ label, children }: { label: string; children: React.ReactNod
   )
 }
 
-export function StatsScreen({ active }: { active: boolean }) {
+// A milestone (most recent / first / most crossed) — name + badge + a detail line,
+// tappable through to the bridge detail.
+function MilestoneCard({
+  label,
+  item,
+  detail,
+  onSelect,
+}: {
+  label: string
+  item: LoggedBridge
+  detail: string
+  onSelect: (b: Bridge) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(item.bridge)}
+      className="block w-full rounded-xl border border-divider bg-surface p-4 text-left active:bg-divider"
+    >
+      <p className="text-xs font-medium uppercase tracking-wide text-muted">{label}</p>
+      <p className="mt-1 text-base font-semibold text-ink">{item.bridge.name}</p>
+      <div className="mt-1.5">
+        <StructureBadge structures={item.bridge.structures} />
+      </div>
+      <p className="mt-1.5 text-sm text-muted">{detail}</p>
+    </button>
+  )
+}
+
+export function StatsScreen({ active, onGoToSearch }: { active: boolean; onGoToSearch: () => void }) {
   const { user, openAuthPrompt } = useAuth()
   const [stats, setStats] = useState<Stats | null>(null)
   const [status, setStatus] = useState<'idle' | 'loading' | 'error' | 'done'>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Bridge | null>(null)
 
   useEffect(() => {
-    if (!active || !user) return
+    if (!active || !user || selected) return
     let alive = true
     // Syncing with an external system (Supabase) — exactly what effects are for.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -41,7 +75,11 @@ export function StatsScreen({ active }: { active: boolean }) {
     return () => {
       alive = false
     }
-  }, [active, user])
+  }, [active, user, selected])
+
+  if (selected) {
+    return <DetailScreen bridge={selected} backLabel="Stats" onBack={() => setSelected(null)} />
+  }
 
   if (!user) {
     return (
@@ -72,9 +110,16 @@ export function StatsScreen({ active }: { active: boolean }) {
             <p className="mt-1 text-red-700">{error}</p>
           </div>
         ) : !stats || stats.total === 0 ? (
-          <p className="text-sm text-muted">
-            No bridges logged yet. Once you start your collection, your stats appear here.
-          </p>
+          <div>
+            <p className="text-sm text-muted">Start crossing bridges to see your stats.</p>
+            <button
+              type="button"
+              onClick={onGoToSearch}
+              className="mt-4 rounded-lg bg-accent px-4 py-2.5 text-base font-medium text-white"
+            >
+              Find a bridge
+            </button>
+          </div>
         ) : (
           <div className="space-y-3">
             <StatCard label="Total bridges crossed">
@@ -102,24 +147,35 @@ export function StatsScreen({ active }: { active: boolean }) {
               </p>
             </StatCard>
 
+            {stats.mostRecent ? (
+              <MilestoneCard
+                label="Most recently crossed"
+                item={stats.mostRecent}
+                detail={formatLogDate(stats.mostRecent.log.lastCrossing)}
+                onSelect={setSelected}
+              />
+            ) : null}
+
             {stats.firstEver ? (
-              <StatCard label="First recorded crossing">
-                <p className="text-base font-semibold text-ink">{stats.firstEver.bridge.name}</p>
-                <p className="text-sm text-muted">
-                  {formatLogDate(stats.firstEver.log.firstRecordedCrossing)}
-                </p>
-              </StatCard>
+              <MilestoneCard
+                label="First recorded crossing"
+                item={stats.firstEver}
+                detail={formatLogDate(stats.firstEver.log.firstRecordedCrossing)}
+                onSelect={setSelected}
+              />
             ) : null}
 
             {stats.mostCrossed ? (
-              <StatCard label="Most crossed">
-                <p className="text-base font-semibold text-ink">{stats.mostCrossed.bridge.name}</p>
-                <p className="text-sm text-muted">
-                  {stats.mostCrossed.log.crossingCount === 1
+              <MilestoneCard
+                label="Most crossed"
+                item={stats.mostCrossed}
+                detail={
+                  stats.mostCrossed.log.crossingCount === 1
                     ? 'Crossed once'
-                    : `Crossed ${stats.mostCrossed.log.crossingCount} times`}
-                </p>
-              </StatCard>
+                    : `Crossed ${stats.mostCrossed.log.crossingCount} times`
+                }
+                onSelect={setSelected}
+              />
             ) : null}
           </div>
         )}
